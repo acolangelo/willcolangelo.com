@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Santa Delivers</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="game-shell" aria-label="Santa Delivers game">
+      <canvas id="game" width="960" height="540"></canvas>
+
+      <section class="hud" aria-label="Game status">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Santa Delivers</span>
+        </div>
+        <div class="meters">
+          <span>Score <strong id="score">0</strong></span>
+          <span>Best <strong id="best">0</strong></span>
+          <span>Combo <strong id="combo">0</strong></span>
+        </div>
+      </section>
+
+      <button id="dropButton" class="drop-button" type="button" aria-label="Drop present">
+        Drop
+      </button>
+
+      <section class="camera-controls" aria-label="Camera controls">
+        <button id="zoomOutButton" class="camera-button" type="button" aria-label="Zoom out">-</button>
+        <button id="zoomInButton" class="camera-button" type="button" aria-label="Zoom in">+</button>
+      </section>
+
+      <section id="message" class="message is-visible" aria-live="polite">
+        <h1>Santa Delivers</h1>
+        <p>Guide the holiday route over snowy rooftops and land gifts cleanly.</p>
+        <button id="startButton" type="button">Start Run</button>
+      </section>
+    </main>
+
+    <script src="./game.js"></script>
+  </body>
+</html>

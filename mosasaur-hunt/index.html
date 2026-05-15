@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mosasaur Hunt</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="hud" aria-label="Game status">
+        <h1>Mosasaur Hunt</h1>
+
+        <section class="target-panel" aria-live="polite">
+          <span class="hud-label">Eat this</span>
+          <img id="targetImage" class="target-image" alt="">
+          <strong id="targetName" class="target-name">Loading</strong>
+        </section>
+
+        <section class="score-panel" aria-label="Score">
+          <div>
+            <span class="hud-label">Hunts</span>
+            <strong id="score">0</strong>
+          </div>
+          <div>
+            <span class="hud-label">Streak</span>
+            <strong id="streak">0</strong>
+          </div>
+        </section>
+      </header>
+
+      <section class="stage" aria-label="Mosasaur Hunt play area">
+        <canvas id="gameCanvas" width="960" height="540"></canvas>
+        <div id="toast" class="toast" aria-live="polite"></div>
+
+        <div class="dpad" aria-label="Direction controls">
+          <button class="dpad-button dpad-up" data-direction="up" aria-label="Up">&uarr;</button>
+          <button class="dpad-button dpad-left" data-direction="left" aria-label="Left">&larr;</button>
+          <button class="dpad-button dpad-right" data-direction="right" aria-label="Right">&rarr;</button>
+          <button class="dpad-button dpad-down" data-direction="down" aria-label="Down">&darr;</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="game.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Construction, Everyone!</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; overflow: hidden;
+    background: #87ceeb;
+    font-family: "Courier New", monospace;
+    color: #fff;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  canvas { display: block; image-rendering: pixelated; }
+
+  #hud {
+    position: fixed; left: 12px; top: 12px;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 10px 14px;
+    border: 2px solid #ffd24a;
+    box-shadow: 4px 4px 0 #000;
+    line-height: 1.5;
+    font-size: 13px;
+    pointer-events: none;
+    max-width: 280px;
+  }
+  #hud .title { color: #ffd24a; font-weight: bold; letter-spacing: 1px; }
+  #hud kbd {
+    background: #2c2c2c; border: 1px solid #888;
+    padding: 1px 5px; border-radius: 2px; color: #ffd24a;
+    font-family: "Courier New", monospace; font-size: 11px;
+  }
+
+  #status {
+    position: fixed; right: 12px; top: 12px;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 10px 14px;
+    border: 2px solid #ffd24a;
+    box-shadow: 4px 4px 0 #000;
+    font-size: 13px;
+    pointer-events: none;
+    min-width: 180px;
+    text-align: right;
+  }
+  #status .label { color: #ffd24a; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 80px;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 18px;
+    border: 2px solid #ffd24a;
+    box-shadow: 4px 4px 0 #000;
+    font-size: 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  #toast.show { opacity: 1; }
+
+  #weather-menu {
+    position: fixed; right: 12px; top: 168px;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 10px 14px;
+    border: 2px solid #ffd24a;
+    box-shadow: 4px 4px 0 #000;
+    font-size: 13px;
+    pointer-events: auto;
+    min-width: 140px;
+  }
+  #weather-menu .title { color: #ffd24a; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px; }
+  .weather-btn {
+    display: block; width: 100%;
+    background: #2c2c2c; color: #fff;
+    border: 2px solid #444; padding: 6px 10px;
+    font-family: "Courier New", monospace; font-size: 12px;
+    cursor: pointer; margin-top: 4px;
+    text-align: left; letter-spacing: 1px;
+  }
+  .weather-btn:hover { background: #444; border-color: #888; }
+  .weather-btn.active { background: #ffd24a; color: #000; border-color: #000; }
+  .weather-btn:focus { outline: none; }
+
+  #title-card {
+    position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  #title-card h1 {
+    color: #ffd24a; font-size: 56px; letter-spacing: 3px;
+    text-shadow: 5px 5px 0 #000, 8px 8px 0 #c97a1f;
+    margin: 0 0 10px 0;
+    font-family: "Courier New", monospace;
+  }
+  #title-card p { color: #fff; font-size: 16px; margin: 4px 0; }
+  #title-card button {
+    margin-top: 24px;
+    background: #ffd24a; color: #000;
+    border: 3px solid #000; box-shadow: 5px 5px 0 #000;
+    padding: 12px 28px; font-size: 18px; font-weight: bold;
+    font-family: "Courier New", monospace;
+    cursor: pointer; letter-spacing: 1px;
+  }
+  #title-card button:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 #000; }
+</style>
+</head>
+<body>
+
+<div id="title-card">
+  <h1>CONSTRUCTION, EVERYONE!</h1>
+  <p>Move dirt. Drive things. Build whatever you want.</p>
+  <p style="opacity:.7">A free-building isometric construction sandbox</p>
+  <button onclick="this.blur(); document.getElementById('title-card').style.display='none'">START WORK</button>
+</div>
+
+<div id="hud">
+  <div class="title">CONTROLS</div>
+  <div><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> Move / Drive</div>
+  <div><kbd>F</kbd> Vehicle / Tool / Drop</div>
+  <div><kbd>Space</kbd> Dig / Dump / Use tool</div>
+  <div><kbd>J</kbd> Frog jump (5–6 blocks)</div>
+  <div><kbd>R</kbd>/<kbd>V</kbd> Boom up/down</div>
+  <div><kbd>T</kbd>/<kbd>G</kbd> Stick</div>
+  <div><kbd>Y</kbd>/<kbd>H</kbd> Bucket curl</div>
+  <div><kbd>A</kbd>/<kbd>D</kbd> Turret slew (excavator)</div>
+  <div><kbd>Q</kbd>/<kbd>E</kbd> Rotate camera</div>
+  <div><kbd>Z</kbd>/<kbd>X</kbd> Zoom</div>
+  <div><kbd>Shift</kbd> Run (on foot)</div>
+</div>
+
+<div id="status">
+  <div><span class="label">MODE:</span> <span id="mode-name">ON FOOT</span></div>
+  <div><span class="label">TOOL:</span> <span id="tool-name">none</span></div>
+  <div><span class="label">BUCKET:</span> <span id="bucket-load">-</span></div>
+  <div><span class="label">DIRT MOVED:</span> <span id="dirt-count">0</span></div>
+</div>
+
+<div id="weather-menu">
+  <div class="title">WEATHER</div>
+  <button class="weather-btn active" data-weather="sunny">SUNNY</button>
+  <button class="weather-btn" data-weather="cloudy">CLOUDY</button>
+  <button class="weather-btn" data-weather="rainy">RAINY</button>
+  <button class="weather-btn" data-weather="snowy">SNOWY</button>
+</div>
+
+<div id="toast"></div>
+
+<canvas id="game"></canvas>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+/* =========================================================================
+   CONSTRUCTION, EVERYONE!
+   A voxel construction sandbox in one HTML file.
+   ======================================================================= */
+
+(function () {
+'use strict';
+
+// ============ CONSTANTS ============
+const WORLD_SIZE   = 96;       // X & Z extent in voxels
+const WORLD_HEIGHT = 16;       // Y extent in voxels
+const VOXEL        = 1;        // size of a voxel in world units
+const CHUNK        = 16;       // chunk side length
+
+const BLOCK = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4 };
+const BLOCK_COLORS = {
+  [BLOCK.GRASS]: 0x5fa845,
+  [BLOCK.DIRT]:  0x8b5a2b,
+  [BLOCK.STONE]: 0x848890,
+  [BLOCK.SAND]:  0xd9bf78,
+};
+
+// ============ WORLD ============
+const world = new Uint8Array(WORLD_SIZE * WORLD_SIZE * WORLD_HEIGHT);
+function inBounds(x, y, z) {
+  return x >= 0 && x < WORLD_SIZE && y >= 0 && y < WORLD_HEIGHT && z >= 0 && z < WORLD_SIZE;
+}
+function blockIndex(x, y, z) {
+  return (y * WORLD_SIZE + z) * WORLD_SIZE + x;
+}
+function getBlock(x, y, z) {
+  if (!inBounds(x, y, z)) return BLOCK.AIR;
+  return world[blockIndex(x, y, z)];
+}
+function setBlock(x, y, z, t) {
+  if (!inBounds(x, y, z)) return;
+  world[blockIndex(x, y, z)] = t;
+}
+function getGroundY(x, z) {
+  for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+    if (getBlock(x, y, z) !== BLOCK.AIR) return y + 1;
+  }
+  return 0;
+}
+function getGroundYf(fx, fz) {
+  // Highest of nearby integer cells (for smoother character on edges)
+  const x = Math.floor(fx);
+  const z = Math.floor(fz);
+  return getGroundY(x, z);
+}
+
+// Pseudo-random hash noise so terrain is deterministic & smooth-ish
+function hashNoise2D(x, z) {
+  let h = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+  return h - Math.floor(h);
+}
+function smoothNoise(x, z) {
+  const xi = Math.floor(x), zi = Math.floor(z);
+  const xf = x - xi, zf = z - zi;
+  const a = hashNoise2D(xi, zi);
+  const b = hashNoise2D(xi + 1, zi);
+  const c = hashNoise2D(xi, zi + 1);
+  const d = hashNoise2D(xi + 1, zi + 1);
+  const u = xf * xf * (3 - 2 * xf);
+  const v = zf * zf * (3 - 2 * zf);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function generateTerrain() {
+  for (let x = 0; x < WORLD_SIZE; x++) {
+    for (let z = 0; z < WORLD_SIZE; z++) {
+      // Layered noise for gentle variation
+      const n =
+        smoothNoise(x * 0.10, z * 0.10) * 2.5 +
+        smoothNoise(x * 0.25, z * 0.25) * 1.0 +
+        smoothNoise(x * 0.50, z * 0.50) * 0.5;
+      const h = Math.max(2, Math.min(WORLD_HEIGHT - 3, Math.round(3 + n)));
+      for (let y = 0; y < h; y++) {
+        let t = BLOCK.DIRT;
+        if (y === 0) t = BLOCK.STONE;
+        else if (y < 2) t = (Math.random() < 0.6 ? BLOCK.STONE : BLOCK.DIRT);
+        else if (y === h - 1) t = BLOCK.GRASS;
+        setBlock(x, y, z, t);
+      }
+    }
+  }
+  // Initial dirt piles spread across the bigger map
+  addPile(20, 20, 4, BLOCK.DIRT);
+  addPile(72, 20, 5, BLOCK.DIRT);
+  addPile(18, 76, 4, BLOCK.SAND);
+  addPile(78, 76, 5, BLOCK.DIRT);
+  addPile(60, 36, 3, BLOCK.SAND);
+  addPile(36, 60, 4, BLOCK.DIRT);
+  addPile(80, 48, 3, BLOCK.DIRT);
+  addPile(14, 48, 4, BLOCK.SAND);
+  // Flatten a worker yard area around the spawn
+  const yardCx = WORLD_SIZE >> 1, yardCz = WORLD_SIZE >> 1;
+  for (let x = yardCx - 7; x <= yardCx + 7; x++)
+    for (let z = yardCz - 7; z <= yardCz + 7; z++) {
+      const g = getGroundY(x, z);
+      if (g > 0) setBlock(x, g - 1, z, BLOCK.GRASS);
+    }
+}
+function addPile(cx, cz, height, type) {
+  for (let dy = 0; dy < height; dy++) {
+    const r = height - dy;
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dz = -r; dz <= r; dz++) {
+        if (dx * dx + dz * dz <= r * r + 0.5) {
+          const gy = getGroundY(cx + dx, cz + dz);
+          setBlock(cx + dx, gy + dy, cz + dz, type);
+        }
+      }
+    }
+  }
+}
+
+// ============ MESH BUILDING (chunked) ============
+const CHUNKS_X = Math.ceil(WORLD_SIZE / CHUNK);
+const CHUNKS_Z = Math.ceil(WORLD_SIZE / CHUNK);
+const chunkMeshes = []; // [cx][cz] = THREE.Mesh
+
+const FACE_DEFS = [
+  // top (+Y)
+  { n: [0, 1, 0],  vs: [[0,1,0],[0,1,1],[1,1,1],[1,1,0]], shade: 1.00, dx: 0, dy: 1, dz: 0 },
+  // bottom (-Y)
+  { n: [0,-1, 0],  vs: [[0,0,1],[0,0,0],[1,0,0],[1,0,1]], shade: 0.55, dx: 0, dy: -1, dz: 0 },
+  // east (+X)
+  { n: [1, 0, 0],  vs: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]], shade: 0.85, dx: 1, dy: 0, dz: 0 },
+  // west (-X)
+  { n: [-1, 0, 0], vs: [[0,0,1],[0,1,1],[0,1,0],[0,0,0]], shade: 0.78, dx: -1, dy: 0, dz: 0 },
+  // south (+Z)
+  { n: [0, 0, 1],  vs: [[1,0,1],[1,1,1],[0,1,1],[0,0,1]], shade: 0.72, dx: 0, dy: 0, dz: 1 },
+  // north (-Z)
+  { n: [0, 0,-1],  vs: [[0,0,0],[0,1,0],[1,1,0],[1,0,0]], shade: 0.66, dx: 0, dy: 0, dz: -1 },
+];
+
+const TMP_COLOR = new THREE.Color();
+function blockBaseColor(t) { return BLOCK_COLORS[t] || 0xff00ff; }
+
+function buildChunkGeometry(cx, cz) {
+  const positions = [];
+  const normals = [];
+  const colors = [];
+  const indices = [];
+  let vi = 0;
+
+  const x0 = cx * CHUNK, z0 = cz * CHUNK;
+  const x1 = Math.min(x0 + CHUNK, WORLD_SIZE);
+  const z1 = Math.min(z0 + CHUNK, WORLD_SIZE);
+
+  for (let x = x0; x < x1; x++) {
+    for (let z = z0; z < z1; z++) {
+      for (let y = 0; y < WORLD_HEIGHT; y++) {
+        const b = getBlock(x, y, z);
+        if (!b) continue;
+        const baseHex = blockBaseColor(b);
+        for (const f of FACE_DEFS) {
+          if (getBlock(x + f.dx, y + f.dy, z + f.dz)) continue;
+          // Slight per-voxel pixel-art jitter
+          const jitter = ((x * 73 + y * 19 + z * 31) & 7) / 200; // 0..0.035
+          TMP_COLOR.setHex(baseHex);
+          TMP_COLOR.multiplyScalar(f.shade * (1 - jitter));
+          const r = TMP_COLOR.r, g = TMP_COLOR.g, bb = TMP_COLOR.b;
+          for (const v of f.vs) {
+            positions.push(x + v[0], y + v[1], z + v[2]);
+            normals.push(f.n[0], f.n[1], f.n[2]);
+            colors.push(r, g, bb);
+          }
+          indices.push(vi, vi + 1, vi + 2, vi, vi + 2, vi + 3);
+          vi += 4;
+        }
+      }
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('normal',   new THREE.Float32BufferAttribute(normals, 3));
+  geo.setAttribute('color',    new THREE.Float32BufferAttribute(colors, 3));
+  geo.setIndex(indices);
+  return geo;
+}
+
+let worldMaterial;
+function buildAllChunks(scene) {
+  for (let cx = 0; cx < CHUNKS_X; cx++) {
+    if (!chunkMeshes[cx]) chunkMeshes[cx] = [];
+    for (let cz = 0; cz < CHUNKS_Z; cz++) {
+      const geo = buildChunkGeometry(cx, cz);
+      const mesh = new THREE.Mesh(geo, worldMaterial);
+      mesh.name = `chunk_${cx}_${cz}`;
+      scene.add(mesh);
+      chunkMeshes[cx][cz] = mesh;
+    }
+  }
+}
+function rebuildChunkAt(x, z, scene) {
+  const cx = Math.floor(x / CHUNK);
+  const cz = Math.floor(z / CHUNK);
+  if (cx < 0 || cx >= CHUNKS_X || cz < 0 || cz >= CHUNKS_Z) return;
+  const old = chunkMeshes[cx][cz];
+  if (old) {
+    scene.remove(old);
+    old.geometry.dispose();
+  }
+  const geo = buildChunkGeometry(cx, cz);
+  const mesh = new THREE.Mesh(geo, worldMaterial);
+  mesh.name = `chunk_${cx}_${cz}`;
+  scene.add(mesh);
+  chunkMeshes[cx][cz] = mesh;
+}
+function rebuildAroundVoxel(x, z, scene) {
+  const cx0 = Math.floor(x / CHUNK), cz0 = Math.floor(z / CHUNK);
+  const seen = new Set();
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      const px = x + dx, pz = z + dz;
+      const cx = Math.floor(px / CHUNK), cz = Math.floor(pz / CHUNK);
+      const k = cx + ',' + cz;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      // only rebuild if it's the same chunk or a neighbor at edge
+      if (cx === cx0 && cz === cz0) {
+        rebuildChunkAt(px, pz, scene);
+      } else if (px % CHUNK === 0 || px % CHUNK === CHUNK - 1 ||
+                 pz % CHUNK === 0 || pz % CHUNK === CHUNK - 1 ||
+                 (px + WORLD_SIZE) % CHUNK === 0) {
+        rebuildChunkAt(px, pz, scene);
+      }
+    }
+  }
+  // simplest: just rebuild this chunk + neighbors when at edges
+  rebuildChunkAt(x, z, scene);
+  if (x % CHUNK === 0)         rebuildChunkAt(x - 1, z, scene);
+  if (x % CHUNK === CHUNK - 1) rebuildChunkAt(x + 1, z, scene);
+  if (z % CHUNK === 0)         rebuildChunkAt(x, z - 1, scene);
+  if (z % CHUNK === CHUNK - 1) rebuildChunkAt(x, z + 1, scene);
+}
+
+// ============ SCENE / CAMERA ============
+const canvas = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+renderer.setPixelRatio(1); // crisp pixels
+renderer.setClearColor(0x87ceeb);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x87ceeb, 60, 130);
+
+// Hemisphere + directional light for soft 8-bit shading via vertex colors only
+const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xffffff, 0.5);
+sun.position.set(20, 40, 10);
+scene.add(sun);
+
+// Material reuses vertex colors; flat shading for chunky look
+worldMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+
+// Orthographic isometric camera
+let camYaw = Math.PI / 4;     // 45° around Y
+const CAM_TILT = Math.atan(Math.SQRT1_2); // ~35.264° classic iso
+let camZoom = 22;             // half-height of view in world units
+
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -100, 200);
+const camTarget = new THREE.Vector3(WORLD_SIZE / 2, 4, WORLD_SIZE / 2);
+
+function updateCameraProjection() {
+  const aspect = window.innerWidth / window.innerHeight;
+  camera.left = -camZoom * aspect;
+  camera.right = camZoom * aspect;
+  camera.top = camZoom;
+  camera.bottom = -camZoom;
+  camera.updateProjectionMatrix();
+}
+function updateCameraPosition() {
+  const dist = 60;
+  const cy = Math.cos(CAM_TILT);
+  const sy = Math.sin(CAM_TILT);
+  camera.position.set(
+    camTarget.x + Math.sin(camYaw) * dist * cy,
+    camTarget.y + dist * sy,
+    camTarget.z + Math.cos(camYaw) * dist * cy
+  );
+  camera.lookAt(camTarget);
+}
+function onResize() {
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  updateCameraProjection();
+}
+window.addEventListener('resize', onResize);
+
+// ============ HELPERS / UI ============
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function toast(msg, ms = 1400) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms);
+}
+function setMode(name) { document.getElementById('mode-name').textContent = name; }
+function setBucketLoad(text) { document.getElementById('bucket-load').textContent = text; }
+function setTool(name) { document.getElementById('tool-name').textContent = name; }
+let dirtMovedCount = 0;
+function bumpDirtCount() {
+  dirtMovedCount++;
+  document.getElementById('dirt-count').textContent = dirtMovedCount;
+}
+
+// ============ INPUT ============
+const keys = {};
+window.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  // Avoid scroll on space
+  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup',   (e) => { keys[e.code] = false; });
+window.addEventListener('blur',    ()  => { for (const k in keys) keys[k] = false; });
+
+function justPressed(code) {
+  // edge-trigger pattern using a per-frame snapshot
+  if (keys[code] && !justPressed._prev[code]) {
+    justPressed._prev[code] = true;
+    return true;
+  }
+  if (!keys[code]) justPressed._prev[code] = false;
+  return false;
+}
+justPressed._prev = {};
+
+// ============ MODELS (low-poly cube assemblies) ============
+function box(w, h, d, color, x = 0, y = 0, z = 0) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const m = new THREE.MeshLambertMaterial({ color, flatShading: true });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.position.set(x, y, z);
+  return mesh;
+}
+
+// ----- FROG (alt form when jumping) -----
+function buildFrog() {
+  const root = new THREE.Group();
+  // Body and belly
+  root.add(box(0.78, 0.36, 0.62, 0x4a8a3e, 0, 0.20, 0));    // green body
+  root.add(box(0.55, 0.20, 0.46, 0xc8be58, 0, 0.10, 0));    // belly
+  // Eye bulges on top, set forward (+Z = "forward")
+  root.add(box(0.20, 0.20, 0.20, 0x4a8a3e,  0.20, 0.46, 0.10));
+  root.add(box(0.20, 0.20, 0.20, 0x4a8a3e, -0.20, 0.46, 0.10));
+  // Whites
+  root.add(box(0.16, 0.16, 0.04, 0xffffff,  0.20, 0.46, 0.21));
+  root.add(box(0.16, 0.16, 0.04, 0xffffff, -0.20, 0.46, 0.21));
+  // Pupils
+  root.add(box(0.08, 0.08, 0.04, 0x000000,  0.22, 0.48, 0.24));
+  root.add(box(0.08, 0.08, 0.04, 0x000000, -0.22, 0.48, 0.24));
+  // Mouth
+  root.add(box(0.50, 0.05, 0.05, 0x2c5023, 0, 0.10, 0.32));
+  // Hind legs (folded, back)
+  root.add(box(0.24, 0.20, 0.36, 0x4a8a3e,  0.36, 0.12, -0.06));
+  root.add(box(0.24, 0.20, 0.36, 0x4a8a3e, -0.36, 0.12, -0.06));
+  // Front feet
+  root.add(box(0.18, 0.10, 0.14, 0x4a8a3e,  0.24, 0.05, 0.28));
+  root.add(box(0.18, 0.10, 0.14, 0x4a8a3e, -0.24, 0.05, 0.28));
+  return root;
+}
+
+// ----- PLAYER (construction worker) -----
+function buildWorker() {
+  const root = new THREE.Group();
+
+  const body = new THREE.Group();
+  body.add(box(0.6, 0.5, 0.4, 0xff8800, 0, 0.55, 0));   // orange vest torso
+  body.add(box(0.55, 0.15, 0.45, 0xffffff, 0, 0.30, 0)); // white shirt at bottom
+  body.add(box(0.35, 0.45, 0.35, 0xffe0bd, 0, 0.95, 0)); // head/face
+  // Helmet (yellow hard hat)
+  const hat = new THREE.Group();
+  hat.add(box(0.5, 0.18, 0.5, 0xffd24a, 0, 0, 0));
+  hat.add(box(0.6, 0.04, 0.55, 0xffd24a, 0, -0.10, 0));
+  hat.position.y = 1.20;
+  body.add(hat);
+
+  // Arms (groups so we can attach a tool to the right hand)
+  const armL = new THREE.Group();
+  armL.add(box(0.18, 0.45, 0.25, 0xffe0bd, 0, 0, 0));
+  armL.position.set(-0.40, 0.55, 0);
+  body.add(armL);
+  const armR = new THREE.Group();
+  armR.add(box(0.18, 0.45, 0.25, 0xffe0bd, 0, 0, 0));
+  armR.position.set(0.40, 0.55, 0);
+  body.add(armR);
+  // Right-hand attachment point (for tools)
+  const handR = new THREE.Group();
+  handR.position.set(0, -0.28, 0.10);
+  armR.add(handR);
+
+  // Legs (will swing while walking)
+  const legL = new THREE.Group();
+  legL.add(box(0.22, 0.5, 0.25, 0x3057a0, 0, -0.25, 0));   // blue jeans
+  legL.add(box(0.25, 0.10, 0.30, 0x3a2a1a, 0, -0.55, 0));  // boot
+  legL.position.set(-0.16, 0.30, 0);
+  const legR = legL.clone();
+  legR.position.x = 0.16;
+  body.add(legL); body.add(legR);
+
+  root.add(body);
+
+  // Frog form, hidden until the player jumps
+  const frog = buildFrog();
+  frog.visible = false;
+  root.add(frog);
+
+  root.userData = { body, frog, legL, legR, armL, armR, handR, walkPhase: 0, heldTool: null };
+  return root;
+}
+
+// ----- EXCAVATOR -----
+function buildExcavator() {
+  const root = new THREE.Group();
+
+  // Tracks (lower body)
+  const tracks = new THREE.Group();
+  tracks.add(box(2.0, 0.35, 3.4, 0x222222, 0,  0.20, 0)); // base plate
+  tracks.add(box(0.6, 0.55, 3.2, 0x111111, -0.85, 0.45, 0));
+  tracks.add(box(0.6, 0.55, 3.2, 0x111111,  0.85, 0.45, 0));
+  // Wheel detail blocks
+  for (let i = -1; i <= 1; i++) {
+    tracks.add(box(0.65, 0.30, 0.35, 0x444444, -0.85, 0.40, i * 1.0));
+    tracks.add(box(0.65, 0.30, 0.35, 0x444444,  0.85, 0.40, i * 1.0));
+  }
+  root.add(tracks);
+
+  // Cab/turret (rotates around Y separately from tracks)
+  const turret = new THREE.Group();
+  turret.position.y = 0.85;
+  const cab = box(1.6, 0.9, 1.6, 0xffd24a, 0, 0.45, -0.2);  // yellow cab
+  turret.add(cab);
+  // Window
+  turret.add(box(1.55, 0.45, 0.05, 0x88ccee, 0, 0.55,  0.6));
+  turret.add(box(0.05, 0.45, 1.5,  0x88ccee, 0.78, 0.55, -0.2));
+  turret.add(box(0.05, 0.45, 1.5,  0x88ccee,-0.78, 0.55, -0.2));
+  // Counterweight back
+  turret.add(box(1.7, 0.7, 0.5, 0xc97a1f, 0, 0.35, -1.10));
+  // Stack
+  turret.add(box(0.18, 0.35, 0.18, 0x222222, 0.55, 1.05, -0.85));
+
+  // Boom (rotates around X near the cab front)
+  const boomPivot = new THREE.Group();
+  boomPivot.position.set(0, 0.40, 0.75); // mounted at front of cab
+  turret.add(boomPivot);
+
+  const boom = new THREE.Group();
+  // The boom geometry centered along +Z so the pivot is at one end
+  boom.add(box(0.45, 0.45, 2.6, 0xffd24a, 0, 0.0, 1.30));
+  boomPivot.add(boom);
+
+  // Stick pivot at the far end of the boom
+  const stickPivot = new THREE.Group();
+  stickPivot.position.set(0, 0, 2.6);
+  boom.add(stickPivot);
+
+  const stick = new THREE.Group();
+  stick.add(box(0.35, 0.35, 1.9, 0xffd24a, 0, 0, 0.95));
+  stickPivot.add(stick);
+
+  // Bucket pivot at the far end of the stick
+  const bucketPivot = new THREE.Group();
+  bucketPivot.position.set(0, 0, 1.9);
+  stick.add(bucketPivot);
+
+  const bucket = new THREE.Group();
+  // Wide bucket shape
+  bucket.add(box(0.7, 0.35, 0.6, 0x444444, 0, -0.20, 0.35));
+  bucket.add(box(0.7, 0.05, 0.6, 0x222222, 0, -0.40, 0.30)); // bottom plate
+  bucket.add(box(0.7, 0.30, 0.05, 0x222222, 0, -0.25, 0.62)); // back
+  bucket.add(box(0.05, 0.30, 0.6, 0x222222, -0.35, -0.25, 0.30));
+  bucket.add(box(0.05, 0.30, 0.6, 0x222222,  0.35, -0.25, 0.30));
+  // Teeth
+  for (let i = -2; i <= 2; i++) {
+    bucket.add(box(0.10, 0.10, 0.10, 0x999999, i * 0.13, -0.45, 0.55));
+  }
+  bucketPivot.add(bucket);
+
+  root.add(turret);
+
+  root.userData = {
+    type: 'excavator',
+    tracks, turret, boomPivot, stickPivot, bucketPivot, bucket,
+    // Initial joint angles
+    boomAngle: -0.5,    // negative = up
+    stickAngle: 1.0,    // positive = curled in
+    bucketAngle: -0.4,
+    turretAngle: 0,
+    bucketLoad: null,   // null or block type
+    // For tip world position computation
+  };
+  // Apply initial pose
+  return root;
+}
+
+// ----- WHEEL LOADER -----
+function buildLoader() {
+  const root = new THREE.Group();
+
+  const rear = new THREE.Group();
+  rear.add(box(2.2, 0.7, 1.8, 0xffd24a, 0, 0.55, -1.0));   // rear chassis
+  rear.add(box(1.8, 0.9, 1.4, 0xffd24a, 0, 1.10, -1.20));  // cab
+  rear.add(box(1.7, 0.5, 0.05, 0x88ccee, 0, 1.30, -0.50)); // windshield
+  rear.add(box(0.05, 0.5, 1.4, 0x88ccee, 0.88, 1.30, -1.20));
+  rear.add(box(0.05, 0.5, 1.4, 0x88ccee, -0.88, 1.30, -1.20));
+  // Rear wheels
+  rear.add(box(0.4, 0.9, 0.9, 0x222222,  1.10, 0.40, -1.40));
+  rear.add(box(0.4, 0.9, 0.9, 0x222222, -1.10, 0.40, -1.40));
+  root.add(rear);
+
+  // Articulation joint -> front section
+  const front = new THREE.Group();
+  front.position.set(0, 0, 0); // joint near origin
+  front.add(box(2.0, 0.7, 1.4, 0xffd24a, 0, 0.55, 0.9));
+  // Front wheels
+  front.add(box(0.4, 0.9, 0.9, 0x222222,  1.10, 0.40, 1.20));
+  front.add(box(0.4, 0.9, 0.9, 0x222222, -1.10, 0.40, 1.20));
+
+  // Loader arm pivot at front
+  const armPivot = new THREE.Group();
+  armPivot.position.set(0, 0.85, 1.50);
+  front.add(armPivot);
+
+  const arm = new THREE.Group();
+  arm.add(box(0.35, 0.3, 1.6, 0xffd24a,  0.65, 0, 0.80));
+  arm.add(box(0.35, 0.3, 1.6, 0xffd24a, -0.65, 0, 0.80));
+  arm.add(box(1.5,  0.2, 0.2, 0xffd24a, 0, 0.0, 1.55)); // crossbar
+  armPivot.add(arm);
+
+  // Bucket pivot
+  const bucketPivot = new THREE.Group();
+  bucketPivot.position.set(0, 0, 1.6);
+  arm.add(bucketPivot);
+
+  const bucket = new THREE.Group();
+  // Loader bucket (flat scoop)
+  bucket.add(box(1.7, 0.5, 0.7, 0x444444, 0, -0.05, 0.35));
+  bucket.add(box(1.7, 0.05, 0.8, 0x222222, 0, -0.30, 0.35)); // bottom plate
+  bucket.add(box(1.7, 0.40, 0.05, 0x222222, 0, -0.10, 0.72)); // back
+  bucket.add(box(0.05, 0.40, 0.8, 0x222222, -0.85, -0.10, 0.35));
+  bucket.add(box(0.05, 0.40, 0.8, 0x222222,  0.85, -0.10, 0.35));
+  // Teeth
+  for (let i = -3; i <= 3; i++) {
+    bucket.add(box(0.10, 0.10, 0.12, 0x999999, i * 0.22, -0.30, 0.65));
+  }
+  bucketPivot.add(bucket);
+
+  root.add(front);
+  root.userData = {
+    type: 'loader',
+    front, armPivot, bucketPivot, bucket,
+    armAngle: 0.1,        // arm raise: positive = up
+    bucketAngle: -0.3,    // bucket curl: positive = curled up
+    bucketLoad: null,
+  };
+  return root;
+}
+
+// ----- DUMP TRUCK -----
+function buildDumpTruck() {
+  const root = new THREE.Group();
+
+  // Chassis
+  root.add(box(2.4, 0.4, 5.0, 0x202428, 0, 0.30, 0));
+  // Cab (front)
+  root.add(box(2.1, 1.05, 1.5, 0xffd24a, 0, 1.05, -1.55));
+  // Windshield
+  root.add(box(1.9, 0.5, 0.05, 0x88ccee, 0, 1.30, -0.85));
+  root.add(box(0.05, 0.5, 1.4, 0x88ccee,  1.00, 1.30, -1.55));
+  root.add(box(0.05, 0.5, 1.4, 0x88ccee, -1.00, 1.30, -1.55));
+  // Front bumper
+  root.add(box(2.3, 0.3, 0.3, 0x111111, 0, 0.40, -2.55));
+  // Wheels
+  for (const z of [-1.6, 0.5, 1.6]) {
+    root.add(box(0.3, 0.85, 0.85, 0x222222,  1.10, 0.40, z));
+    root.add(box(0.3, 0.85, 0.85, 0x222222, -1.10, 0.40, z));
+  }
+
+  // Dump bed pivots at the back, hinges around X
+  const bedPivot = new THREE.Group();
+  bedPivot.position.set(0, 0.55, 2.15);
+  root.add(bedPivot);
+
+  const bed = new THREE.Group();
+  // Walls of the bed; geometry oriented so pivot is at the BACK end
+  bed.add(box(2.3, 0.10, 3.4, 0x444444, 0, 0.05, -1.65));   // floor
+  bed.add(box(2.3, 0.55, 0.10, 0x666666, 0, 0.30, -3.40));  // front wall
+  bed.add(box(0.10, 0.55, 3.4, 0x666666, 1.10, 0.30, -1.65));// right wall
+  bed.add(box(0.10, 0.55, 3.4, 0x666666,-1.10, 0.30, -1.65));// left wall
+  // Container that holds the visible dirt cubes — child of `bed` so it tilts with it
+  const bedContent = new THREE.Group();
+  bed.add(bedContent);
+  bedPivot.add(bed);
+
+  root.userData = {
+    type: 'truck',
+    bed, bedPivot, bedContent,
+    bedAngle: 0,
+    bedLoad: 0,             // count of dirt blocks
+    dumpedThisTilt: false,
+  };
+  return root;
+}
+
+// ============ ENTITIES IN SCENE ============
+const SPAWN_X = WORLD_SIZE >> 1;
+const SPAWN_Z = WORLD_SIZE >> 1;
+
+const player = buildWorker();
+scene.add(player);
+player.position.set(SPAWN_X, getGroundY(SPAWN_X, SPAWN_Z), SPAWN_Z);
+
+const excavator = buildExcavator();
+scene.add(excavator);
+excavator.position.set(SPAWN_X - 6, getGroundY(SPAWN_X - 6, SPAWN_Z + 4), SPAWN_Z + 4);
+excavator.rotation.y = -Math.PI / 2;
+
+const loader = buildLoader();
+scene.add(loader);
+loader.position.set(SPAWN_X + 6, getGroundY(SPAWN_X + 6, SPAWN_Z + 4), SPAWN_Z + 4);
+loader.rotation.y = Math.PI;
+
+const truck = buildDumpTruck();
+scene.add(truck);
+truck.position.set(SPAWN_X, getGroundY(SPAWN_X, SPAWN_Z + 9), SPAWN_Z + 9);
+truck.rotation.y = Math.PI / 2;
+
+const vehicles = [excavator, loader, truck];
+
+// Place player on top of ground at start
+function snapToGround(obj) {
+  const gy = getGroundY(Math.floor(obj.position.x), Math.floor(obj.position.z));
+  obj.position.y = gy;
+}
+snapToGround(player);
+snapToGround(excavator);
+snapToGround(loader);
+snapToGround(truck);
+
+// ============ STATE ============
+const state = {
+  mode: 'foot',           // 'foot' | 'excavator' | 'loader' | 'truck'
+  vehicle: null,
+  facingY: 0,             // player facing (radians)
+  vy: 0,                  // vertical velocity (used during a frog jump)
+  walking: false,
+  jumping: false,         // true while transformed into the frog
+};
+
+function startFrogJump() {
+  if (state.jumping) return;
+  state.jumping = true;
+  state.vy = 18;          // tuned so the apex is ~5–6 blocks above the ground
+  player.userData.body.visible = false;
+  player.userData.frog.visible = true;
+  player.userData.frog.rotation.set(0, 0, 0);
+}
+
+function endFrogJump() {
+  state.jumping = false;
+  state.vy = 0;
+  player.userData.body.visible = true;
+  player.userData.frog.visible = false;
+  player.userData.frog.rotation.set(0, 0, 0);
+}
+
+// Apply pose helpers per vehicle
+function applyExcavatorPose(ex) {
+  const u = ex.userData;
+  u.turret.rotation.y = u.turretAngle;
+  u.boomPivot.rotation.x = u.boomAngle;
+  u.stickPivot.rotation.x = u.stickAngle;
+  u.bucketPivot.rotation.x = u.bucketAngle;
+}
+function applyLoaderPose(l) {
+  const u = l.userData;
+  u.armPivot.rotation.x = -u.armAngle;     // raise = up = -X rotation in our setup
+  u.bucketPivot.rotation.x = -u.bucketAngle;
+}
+function applyTruckPose(t) {
+  const u = t.userData;
+  // Positive bedAngle lifts the FRONT of the bed (near the cab) so contents
+  // slide out the back end (the pivot end).
+  u.bedPivot.rotation.x = u.bedAngle;
+}
+
+function rebuildTruckBedDirt(t) {
+  const u = t.userData;
+  const bc = u.bedContent;
+  while (bc.children.length > 0) {
+    const c = bc.children[0];
+    bc.remove(c);
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) c.material.dispose();
+  }
+  const N = u.bedLoad | 0;
+  if (N <= 0) return;
+  const COLS = 3;
+  const ROWS = 5;
+  const PER_LAYER = COLS * ROWS;
+  const xs = [-0.7, 0, 0.7];
+  // Bed floor in bed-local: z runs from -3.35 (front wall) to 0.05 (open back).
+  const zs = [-3.0, -2.30, -1.60, -0.90, -0.30];
+  for (let i = 0; i < N; i++) {
+    const layer = Math.floor(i / PER_LAYER);
+    const idx = i % PER_LAYER;
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    const x = xs[col];
+    const z = zs[row];
+    const y = 0.20 + layer * 0.30;
+    const c = ((i * 31) & 3) === 0 ? 0x6f4520 : 0x8b5a2b;
+    bc.add(box(0.62, 0.30, 0.62, c, x, y, z));
+  }
+}
+applyExcavatorPose(excavator);
+applyLoaderPose(loader);
+applyTruckPose(truck);
+
+// ============ DIRT ACTIONS ============
+function digTopBlockAt(wx, wz) {
+  const x = Math.floor(wx), z = Math.floor(wz);
+  if (!inBounds(x, 0, z)) return null;
+  for (let y = WORLD_HEIGHT - 1; y >= 1; y--) {
+    const b = getBlock(x, y, z);
+    if (b !== BLOCK.AIR) {
+      if (b === BLOCK.STONE) return null; // can't dig stone (yet)
+      setBlock(x, y, z, BLOCK.AIR);
+      rebuildAroundVoxel(x, z, scene);
+      bumpDirtCount();
+      return b;
+    }
+  }
+  return null;
+}
+function digBlockAt(wx, wy, wz) {
+  const x = Math.floor(wx), y = Math.floor(wy), z = Math.floor(wz);
+  if (!inBounds(x, y, z)) return null;
+  const b = getBlock(x, y, z);
+  if (b === BLOCK.AIR || b === BLOCK.STONE) return null;
+  setBlock(x, y, z, BLOCK.AIR);
+  rebuildAroundVoxel(x, z, scene);
+  bumpDirtCount();
+  return b;
+}
+function dropBlockAt(wx, wz, type) {
+  const x = Math.floor(wx), z = Math.floor(wz);
+  if (!inBounds(x, 0, z)) return false;
+  // place on top of the column
+  const y = getGroundY(x, z);
+  if (y >= WORLD_HEIGHT - 1) return false;
+  setBlock(x, y, z, type);
+  rebuildAroundVoxel(x, z, scene);
+  bumpDirtCount();
+  return true;
+}
+
+// Compute the world position of a nested object's tip
+const _tipVec = new THREE.Vector3();
+function worldPos(obj, localOffset = null) {
+  obj.updateMatrixWorld();
+  if (localOffset) {
+    _tipVec.copy(localOffset).applyMatrix4(obj.matrixWorld);
+  } else {
+    _tipVec.setFromMatrixPosition(obj.matrixWorld);
+  }
+  return _tipVec;
+}
+
+// ============ MOVEMENT HELPERS ============
+function tryMoveOnGround(obj, nx, nz) {
+  // Can step up by 1 voxel; otherwise blocked
+  const curY = obj.position.y;
+  const targetGy = getGroundY(Math.floor(nx), Math.floor(nz));
+  const diff = targetGy - curY;
+  if (diff <= 1.05) {
+    obj.position.x = nx;
+    obj.position.z = nz;
+    obj.position.y = targetGy;
+    return true;
+  }
+  return false;
+}
+
+function nearestVehicle(p) {
+  let best = null, bestD = 4.0; // 4 unit pickup radius
+  for (const v of vehicles) {
+    const dx = v.position.x - p.position.x;
+    const dz = v.position.z - p.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < bestD) { best = v; bestD = d; }
+  }
+  return best;
+}
+
+function setVehiclePoseOnGround(v) {
+  // For wheeled/tracked vehicles, place on ground at center
+  const gy = getGroundY(Math.floor(v.position.x), Math.floor(v.position.z));
+  v.position.y = gy;
+}
+
+// ============ UPDATE PER MODE ============
+const FOOT_SPEED = 5.5;
+const RUN_SPEED  = 9.0;
+
+function updateFoot(dt) {
+  // Camera-relative input — Up arrow points "into" the screen (away from camera).
+  let mx = 0, mz = 0;
+  if (keys['ArrowUp'])    mx -= 1;
+  if (keys['ArrowDown'])  mx += 1;
+  if (keys['ArrowLeft'])  mz += 1;
+  if (keys['ArrowRight']) mz -= 1;
+  const len = Math.hypot(mx, mz);
+  state.walking = len > 0.01;
+  let wx = 0, wz = 0;
+  if (state.walking) {
+    mx /= len; mz /= len;
+    const c = Math.cos(camYaw), s = Math.sin(camYaw);
+    wx = mx * c - mz * s;
+    wz = mx * s + mz * c;
+    state.facingY = Math.atan2(wx, wz);
+  }
+
+  if (state.jumping) {
+    // Free flight while in the air — no terrain stepping limit
+    if (state.walking) {
+      const airSpeed = 9.0;
+      const nx = player.position.x + wx * airSpeed * dt;
+      const nz = player.position.z + wz * airSpeed * dt;
+      player.position.x = Math.max(0.5, Math.min(WORLD_SIZE - 0.5, nx));
+      player.position.z = Math.max(0.5, Math.min(WORLD_SIZE - 0.5, nz));
+    }
+    // Vertical physics
+    player.position.y += state.vy * dt;
+    state.vy -= 30 * dt;
+    const groundY = getGroundY(Math.floor(player.position.x), Math.floor(player.position.z));
+    if (player.position.y <= groundY) {
+      player.position.y = groundY;
+      endFrogJump();
+    }
+  } else {
+    if (state.walking) {
+      const speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? RUN_SPEED : FOOT_SPEED;
+      const nx = player.position.x + wx * speed * dt;
+      const nz = player.position.z + wz * speed * dt;
+      const cx = Math.max(0.5, Math.min(WORLD_SIZE - 0.5, nx));
+      const cz = Math.max(0.5, Math.min(WORLD_SIZE - 0.5, nz));
+      tryMoveOnGround(player, cx, cz);
+    }
+    player.position.y = getGroundY(Math.floor(player.position.x), Math.floor(player.position.z));
+  }
+
+  // Animate
+  player.rotation.y = state.facingY;
+  const u = player.userData;
+  if (state.jumping) {
+    u.frog.rotation.x += dt * 7;     // forward somersault while airborne
+  } else if (state.walking) {
+    u.walkPhase += dt * 10;
+    const s = Math.sin(u.walkPhase);
+    u.legL.rotation.x = s * 0.6;
+    u.legR.rotation.x = -s * 0.6;
+    u.body.position.y = Math.abs(s) * 0.05;
+  } else {
+    u.legL.rotation.x *= 0.8;
+    u.legR.rotation.x *= 0.8;
+    u.body.position.y *= 0.8;
+  }
+
+  // Frog jump
+  if (justPressed('KeyJ') && !state.jumping) {
+    startFrogJump();
+  }
+
+  // Contextual F: enter vehicle, pick up tool, or drop held tool
+  if (justPressed('KeyF') && !state.jumping) {
+    const v = nearestVehicle(player);
+    if (v) {
+      state.vehicle = v;
+      state.mode = v.userData.type;
+      player.visible = false;
+      setMode(v.userData.type.toUpperCase());
+      if (v.userData.type === 'truck') {
+        setBucketLoad(`BED: ${v.userData.bedLoad}`);
+      } else {
+        setBucketLoad(v.userData.bucketLoad ? 'LOADED' : 'EMPTY');
+      }
+      toast(`Entered ${v.userData.type}`);
+    } else {
+      const t = nearestTool(player);
+      if (t) {
+        pickUpTool(t);
+      } else if (u.heldTool) {
+        dropHeldTool();
+      } else {
+        toast('Nothing nearby');
+      }
+    }
+  }
+
+  // Use tool with Space (only when not mid-jump)
+  if (justPressed('Space') && u.heldTool && !state.jumping) {
+    useToolAction();
+  }
+}
+
+function updateExcavator(dt) {
+  const ex = state.vehicle;
+  const u = ex.userData;
+
+  // Drive: Up/Down = forward/back along tracks heading, Left/Right = turn
+  let drive = 0;
+  if (keys['ArrowUp'])    drive += 1;
+  if (keys['ArrowDown'])  drive -= 1;
+  let turn = 0;
+  if (keys['ArrowLeft'])  turn += 1;
+  if (keys['ArrowRight']) turn -= 1;
+  ex.rotation.y += turn * 1.6 * dt;
+
+  if (drive !== 0) {
+    const speed = 4.0 * drive * dt;
+    const fx = -Math.sin(ex.rotation.y) * speed;
+    const fz = -Math.cos(ex.rotation.y) * speed;
+    const nx = Math.max(1, Math.min(WORLD_SIZE - 1, ex.position.x + fx));
+    const nz = Math.max(1, Math.min(WORLD_SIZE - 1, ex.position.z + fz));
+    // simple terrain follow: only move if step <=1 voxel
+    const targetGy = getGroundY(Math.floor(nx), Math.floor(nz));
+    if (Math.abs(targetGy - ex.position.y) <= 1.05) {
+      ex.position.x = nx; ex.position.z = nz; ex.position.y = targetGy;
+    }
+  } else {
+    // ground snap
+    ex.position.y = getGroundY(Math.floor(ex.position.x), Math.floor(ex.position.z));
+  }
+
+  // Turret slew A/D
+  if (keys['KeyA']) u.turretAngle += 1.2 * dt;
+  if (keys['KeyD']) u.turretAngle -= 1.2 * dt;
+
+  // Boom up/down R/V (R = up = boomAngle decreases toward -1.2; V = down)
+  if (keys['KeyR']) u.boomAngle = Math.max(-1.1, u.boomAngle - 0.9 * dt);
+  if (keys['KeyV']) u.boomAngle = Math.min(0.4,  u.boomAngle + 0.9 * dt);
+
+  // Stick T/G (T extends out (decreases angle toward 0), G curls in (increases))
+  if (keys['KeyT']) u.stickAngle = Math.max(-0.2, u.stickAngle - 1.2 * dt);
+  if (keys['KeyG']) u.stickAngle = Math.min(2.2,  u.stickAngle + 1.2 * dt);
+
+  // Bucket curl Y/H
+  if (keys['KeyY']) u.bucketAngle = Math.max(-1.4, u.bucketAngle - 1.4 * dt);
+  if (keys['KeyH']) u.bucketAngle = Math.min(0.6,  u.bucketAngle + 1.4 * dt);
+
+  applyExcavatorPose(ex);
+
+  // Dig / dump on Space
+  if (justPressed('Space')) {
+    // Compute bucket teeth tip world position
+    const tipLocal = new THREE.Vector3(0, -0.45, 0.55);
+    const tipWorld = worldPos(u.bucket, tipLocal).clone();
+    if (u.bucketLoad == null) {
+      // Try to dig the voxel at the tip; first check tip.y just below the tip
+      let dug = digBlockAt(tipWorld.x, tipWorld.y, tipWorld.z);
+      if (!dug) {
+        // try one below
+        dug = digBlockAt(tipWorld.x, tipWorld.y - 1, tipWorld.z);
+      }
+      if (!dug) {
+        // try the surface at tip xz
+        dug = digTopBlockAt(tipWorld.x, tipWorld.z);
+      }
+      if (dug) {
+        u.bucketLoad = (dug === BLOCK.SAND) ? BLOCK.SAND : BLOCK.DIRT;
+        setBucketLoad('LOADED');
+        toast('Dug ' + (dug === BLOCK.SAND ? 'sand' : 'dirt'));
+      } else {
+        toast('Nothing to dig there');
+      }
+    } else {
+      // If the bucket is over the dump truck bed, drop into it instead of the world.
+      const t = truck;
+      const dx = tipWorld.x - t.position.x, dz = tipWorld.z - t.position.z;
+      const localZ = dx * Math.sin(t.rotation.y) + dz * Math.cos(t.rotation.y);
+      const localX = dx * Math.cos(t.rotation.y) - dz * Math.sin(t.rotation.y);
+      if (Math.abs(localX) < 1.4 && localZ > -0.5 && localZ < 3.5 && tipWorld.y > t.position.y + 0.6) {
+        truck.userData.bedLoad++;
+        rebuildTruckBedDirt(truck);
+        bumpDirtCount();
+        u.bucketLoad = null;
+        setBucketLoad('EMPTY');
+        toast('Loaded into truck (' + truck.userData.bedLoad + ')');
+      } else {
+        const ok = dropBlockAt(tipWorld.x, tipWorld.z, u.bucketLoad);
+        if (ok) {
+          u.bucketLoad = null;
+          setBucketLoad('EMPTY');
+        } else {
+          toast('Cannot dump there');
+        }
+      }
+    }
+  }
+
+  if (justPressed('KeyF')) exitVehicle();
+}
+
+function updateLoader(dt) {
+  const lo = state.vehicle;
+  const u = lo.userData;
+
+  let drive = 0;
+  if (keys['ArrowUp'])    drive += 1;
+  if (keys['ArrowDown'])  drive -= 1;
+  let turn = 0;
+  if (keys['ArrowLeft'])  turn += 1;
+  if (keys['ArrowRight']) turn -= 1;
+
+  // Wheel-loader steering: turning while driving
+  if (drive !== 0) {
+    lo.rotation.y += turn * 1.4 * dt;
+    const speed = 6.0 * drive * dt;
+    const fx = -Math.sin(lo.rotation.y) * speed;
+    const fz = -Math.cos(lo.rotation.y) * speed;
+    const nx = Math.max(1, Math.min(WORLD_SIZE - 1, lo.position.x + fx));
+    const nz = Math.max(1, Math.min(WORLD_SIZE - 1, lo.position.z + fz));
+    const targetGy = getGroundY(Math.floor(nx), Math.floor(nz));
+    if (Math.abs(targetGy - lo.position.y) <= 1.05) {
+      lo.position.x = nx; lo.position.z = nz; lo.position.y = targetGy;
+    }
+  } else {
+    lo.rotation.y += turn * 1.0 * dt;
+    lo.position.y = getGroundY(Math.floor(lo.position.x), Math.floor(lo.position.z));
+  }
+
+  // Arm raise/lower R/V
+  if (keys['KeyR']) u.armAngle = Math.min(1.0, u.armAngle + 0.9 * dt);
+  if (keys['KeyV']) u.armAngle = Math.max(-0.2, u.armAngle - 0.9 * dt);
+  // Bucket curl T/G
+  if (keys['KeyT']) u.bucketAngle = Math.min(1.2, u.bucketAngle + 1.2 * dt);
+  if (keys['KeyG']) u.bucketAngle = Math.max(-0.5, u.bucketAngle - 1.2 * dt);
+
+  applyLoaderPose(lo);
+
+  // Dig / dump
+  if (justPressed('Space')) {
+    // bucket teeth tip
+    const tipLocal = new THREE.Vector3(0, -0.30, 0.65);
+    const tipWorld = worldPos(u.bucket, tipLocal).clone();
+    if (u.bucketLoad == null) {
+      let dug = digBlockAt(tipWorld.x, tipWorld.y, tipWorld.z);
+      if (!dug) dug = digTopBlockAt(tipWorld.x, tipWorld.z);
+      if (dug) {
+        u.bucketLoad = (dug === BLOCK.SAND) ? BLOCK.SAND : BLOCK.DIRT;
+        setBucketLoad('LOADED');
+        toast('Scooped ' + (dug === BLOCK.SAND ? 'sand' : 'dirt'));
+      } else {
+        toast('Nothing to scoop');
+      }
+    } else {
+      // If bucket is over the dump truck bed, drop into it
+      const t = truck;
+      const dx = tipWorld.x - t.position.x, dz = tipWorld.z - t.position.z;
+      const localZ = dx * Math.sin(t.rotation.y) + dz * Math.cos(t.rotation.y);
+      const localX = dx * Math.cos(t.rotation.y) - dz * Math.sin(t.rotation.y);
+      if (Math.abs(localX) < 1.4 && localZ > -0.5 && localZ < 3.5 && tipWorld.y > t.position.y + 0.6) {
+        truck.userData.bedLoad++;
+        rebuildTruckBedDirt(truck);
+        bumpDirtCount();
+        u.bucketLoad = null;
+        setBucketLoad('EMPTY');
+        toast('Loaded into truck (' + truck.userData.bedLoad + ')');
+      } else {
+        const ok = dropBlockAt(tipWorld.x, tipWorld.z, u.bucketLoad);
+        if (ok) { u.bucketLoad = null; setBucketLoad('EMPTY'); }
+        else toast('Cannot dump there');
+      }
+    }
+  }
+
+  if (justPressed('KeyF')) exitVehicle();
+}
+
+function updateTruck(dt) {
+  const tr = state.vehicle;
+  const u = tr.userData;
+
+  let drive = 0;
+  if (keys['ArrowUp'])    drive += 1;
+  if (keys['ArrowDown'])  drive -= 1;
+  let turn = 0;
+  if (keys['ArrowLeft'])  turn += 1;
+  if (keys['ArrowRight']) turn -= 1;
+
+  if (drive !== 0) {
+    tr.rotation.y += turn * 1.2 * dt;
+    const speed = 8.0 * drive * dt;
+    // Truck "front" is -Z in local. Adjust for chassis orientation.
+    const fx = -Math.sin(tr.rotation.y) * speed;
+    const fz = -Math.cos(tr.rotation.y) * speed;
+    const nx = Math.max(1, Math.min(WORLD_SIZE - 1, tr.position.x + fx));
+    const nz = Math.max(1, Math.min(WORLD_SIZE - 1, tr.position.z + fz));
+    const targetGy = getGroundY(Math.floor(nx), Math.floor(nz));
+    if (Math.abs(targetGy - tr.position.y) <= 1.05) {
+      tr.position.x = nx; tr.position.z = nz; tr.position.y = targetGy;
+    }
+  } else {
+    tr.position.y = getGroundY(Math.floor(tr.position.x), Math.floor(tr.position.z));
+  }
+
+  // Bed tilt: hold Space to raise; release to lower
+  if (keys['Space']) {
+    u.bedAngle = Math.min(1.0, u.bedAngle + 0.9 * dt);
+    if (u.bedAngle > 0.6 && u.bedLoad > 0 && !u.dumpedThisTilt) {
+      // Dump: drop bedLoad blocks behind the truck (in a pile)
+      const back = new THREE.Vector3(0, 0, 4.5).applyEuler(new THREE.Euler(0, tr.rotation.y, 0));
+      const bx = tr.position.x + back.x;
+      const bz = tr.position.z + back.z;
+      const placed = scatterDump(bx, bz, u.bedLoad);
+      u.bedLoad = Math.max(0, u.bedLoad - placed);
+      rebuildTruckBedDirt(tr);
+      setBucketLoad(`BED: ${u.bedLoad}`);
+      u.dumpedThisTilt = (u.bedLoad === 0);
+      toast('Dumped ' + placed + ' blocks');
+    }
+  } else {
+    u.bedAngle = Math.max(0, u.bedAngle - 0.9 * dt);
+    if (u.bedAngle < 0.05) u.dumpedThisTilt = false;
+  }
+  applyTruckPose(tr);
+
+  if (justPressed('KeyF')) exitVehicle();
+}
+
+// Drop N dirt blocks in a small pile pattern at (cx, cz)
+function scatterDump(cx, cz, n) {
+  const ringOrder = [
+    [0,0],[1,0],[-1,0],[0,1],[0,-1],
+    [1,1],[-1,1],[1,-1],[-1,-1],
+    [2,0],[-2,0],[0,2],[0,-2],
+    [2,1],[-2,1],[1,2],[-1,2],[2,-1],[-2,-1],[1,-2],[-1,-2],
+    [2,2],[-2,2],[2,-2],[-2,-2]
+  ];
+  let placed = 0;
+  for (let i = 0; i < n; i++) {
+    let dropped = false;
+    for (const [dx, dz] of ringOrder) {
+      const ok = dropBlockAt(cx + dx, cz + dz, BLOCK.DIRT);
+      if (ok) { placed++; dropped = true; break; }
+    }
+    if (!dropped) break;
+  }
+  return placed;
+}
+
+function exitVehicle() {
+  if (!state.vehicle) return;
+  // Drop player off near the vehicle
+  const v = state.vehicle;
+  const offset = new THREE.Vector3(2.4, 0, 0).applyEuler(new THREE.Euler(0, v.rotation.y, 0));
+  player.position.set(v.position.x + offset.x, 0, v.position.z + offset.z);
+  player.position.y = getGroundY(Math.floor(player.position.x), Math.floor(player.position.z));
+  player.visible = true;
+  state.vehicle = null;
+  state.mode = 'foot';
+  setMode('ON FOOT');
+  setBucketLoad('-');
+  toast('Exited vehicle');
+}
+
+// ============ CAMERA UPDATE ============
+function updateCamera(dt) {
+  // Rotate
+  if (keys['KeyQ']) camYaw += 1.4 * dt;
+  if (keys['KeyE']) camYaw -= 1.4 * dt;
+  // Q/E conflict with excavator turret slew, so detect mode
+  // (handled because excavator update reads same keys; both happen — turret slews and camera rotates.
+  //  To avoid double-binding, only rotate camera in 'foot' mode here.)
+}
+
+function updateCameraFoot(dt) {
+  if (state.mode === 'foot') {
+    if (keys['KeyQ']) camYaw += 1.4 * dt;
+    if (keys['KeyE']) camYaw -= 1.4 * dt;
+  } else {
+    // In a vehicle, use bracket-keys for camera if needed; default: do nothing
+    if (keys['BracketLeft'])  camYaw += 1.4 * dt;
+    if (keys['BracketRight']) camYaw -= 1.4 * dt;
+  }
+  if (keys['KeyZ']) camZoom = Math.max(8, camZoom - 12 * dt);
+  if (keys['KeyX']) camZoom = Math.min(40, camZoom + 12 * dt);
+  updateCameraProjection();
+
+  // Smoothly follow current focus
+  const focus = state.vehicle || player;
+  const tx = focus.position.x;
+  const ty = focus.position.y + 1.2;
+  const tz = focus.position.z;
+  camTarget.x += (tx - camTarget.x) * Math.min(1, dt * 6);
+  camTarget.y += (ty - camTarget.y) * Math.min(1, dt * 6);
+  camTarget.z += (tz - camTarget.z) * Math.min(1, dt * 6);
+  updateCameraPosition();
+}
+
+// ============ TOOLS ============
+function buildShovel() {
+  const root = new THREE.Group();
+  // Origin = grip (where the hand holds). Handle goes downward, blade at the bottom.
+  root.add(box(0.18, 0.10, 0.10, 0x4a3018, 0,  0.00, 0));   // grip
+  root.add(box(0.07, 0.90, 0.07, 0x6f4520, 0, -0.50, 0));   // handle
+  root.add(box(0.10, 0.12, 0.10, 0x444444, 0, -1.00, 0));   // ferrule
+  root.add(box(0.36, 0.06, 0.06, 0x6f4520, 0, -1.05, 0));   // shoulder
+  root.add(box(0.36, 0.36, 0.05, 0xb0b4ba, 0, -1.25, 0));   // blade
+  return root;
+}
+function buildPickaxe() {
+  const root = new THREE.Group();
+  root.add(box(0.18, 0.10, 0.10, 0x4a3018, 0,  0.00, 0));   // grip
+  root.add(box(0.07, 0.90, 0.07, 0x6f4520, 0, -0.50, 0));   // handle
+  // Pick head (horizontal bar) at the bottom of the handle
+  root.add(box(0.85, 0.10, 0.10, 0x666666, 0, -1.05, 0));
+  root.add(box(0.10, 0.18, 0.10, 0x666666,  0.42, -1.05, 0));
+  root.add(box(0.10, 0.18, 0.10, 0x666666, -0.42, -1.05, 0));
+  return root;
+}
+function buildRake() {
+  const root = new THREE.Group();
+  root.add(box(0.18, 0.10, 0.10, 0x4a3018, 0,  0.00, 0));   // grip
+  root.add(box(0.07, 1.00, 0.07, 0x6f4520, 0, -0.55, 0));   // handle
+  root.add(box(0.55, 0.08, 0.08, 0x444444, 0, -1.10, 0));   // crossbar
+  for (let i = -2; i <= 2; i++) {
+    root.add(box(0.05, 0.20, 0.05, 0x999999, i * 0.12, -1.24, 0));
+  }
+  return root;
+}
+
+const TOOL = { SHOVEL: 'shovel', PICKAXE: 'pickaxe', RAKE: 'rake' };
+const tools = [];
+
+function spawnTool(type, x, z) {
+  let model;
+  if (type === TOOL.SHOVEL)  model = buildShovel();
+  else if (type === TOOL.PICKAXE) model = buildPickaxe();
+  else model = buildRake();
+  const gy = getGroundY(Math.floor(x), Math.floor(z));
+  // Lay flat on the ground (rotate so handle is along -Z)
+  model.rotation.set(Math.PI / 2, 0, 0);
+  model.position.set(x, gy + 0.10, z);
+  scene.add(model);
+  const tool = { model, type, picked: false };
+  tools.push(tool);
+  return tool;
+}
+
+function nearestTool(p) {
+  let best = null, bestD = 2.0;
+  for (const t of tools) {
+    if (t.picked) continue;
+    const dx = t.model.position.x - p.position.x;
+    const dz = t.model.position.z - p.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < bestD) { best = t; bestD = d; }
+  }
+  return best;
+}
+
+function pickUpTool(tool) {
+  if (player.userData.heldTool) dropHeldTool();
+  scene.remove(tool.model);
+  tool.model.position.set(0, 0, 0);
+  tool.model.rotation.set(-Math.PI / 4, 0, 0); // tilt forward in hand
+  player.userData.handR.add(tool.model);
+  tool.picked = true;
+  player.userData.heldTool = tool;
+  setTool(tool.type.toUpperCase());
+  toast('Picked up ' + tool.type);
+}
+
+function dropHeldTool() {
+  const tool = player.userData.heldTool;
+  if (!tool) return;
+  player.userData.handR.remove(tool.model);
+  const px = player.position.x, pz = player.position.z;
+  tool.model.position.set(px, getGroundY(Math.floor(px), Math.floor(pz)) + 0.10, pz);
+  tool.model.rotation.set(Math.PI / 2, 0, 0);
+  scene.add(tool.model);
+  tool.picked = false;
+  player.userData.heldTool = null;
+  setTool('none');
+  toast('Dropped ' + tool.type);
+}
+
+function blockName(b) {
+  if (b === BLOCK.GRASS) return 'grass';
+  if (b === BLOCK.DIRT)  return 'dirt';
+  if (b === BLOCK.STONE) return 'stone';
+  if (b === BLOCK.SAND)  return 'sand';
+  return 'something';
+}
+
+function useToolAction() {
+  const held = player.userData.heldTool;
+  if (!held) return;
+  // Cell directly in front of the player
+  const fx = player.position.x + Math.sin(state.facingY) * 1.0;
+  const fz = player.position.z + Math.cos(state.facingY) * 1.0;
+  const x = Math.floor(fx), z = Math.floor(fz);
+  if (!inBounds(x, 0, z)) return;
+
+  // Find topmost non-air voxel in that column
+  let target = null;
+  for (let y = WORLD_HEIGHT - 1; y >= 1; y--) {
+    const b = getBlock(x, y, z);
+    if (b !== BLOCK.AIR) { target = { y, b }; break; }
+  }
+
+  if (held.type === TOOL.SHOVEL) {
+    if (!target) { toast('Nothing to dig'); return; }
+    if (target.b === BLOCK.STONE) { toast('Need a pickaxe for stone'); return; }
+    setBlock(x, target.y, z, BLOCK.AIR);
+    rebuildAroundVoxel(x, z, scene);
+    bumpDirtCount();
+    toast('Dug ' + blockName(target.b));
+  } else if (held.type === TOOL.PICKAXE) {
+    if (!target) { toast('Nothing to dig'); return; }
+    setBlock(x, target.y, z, BLOCK.AIR);
+    rebuildAroundVoxel(x, z, scene);
+    bumpDirtCount();
+    toast('Mined ' + blockName(target.b));
+  } else if (held.type === TOOL.RAKE) {
+    const gy = getGroundY(x, z);
+    if (gy <= 0) { toast('Nothing to rake'); return; }
+    const top = getBlock(x, gy - 1, z);
+    if (top === BLOCK.DIRT || top === BLOCK.SAND) {
+      setBlock(x, gy - 1, z, BLOCK.GRASS);
+      rebuildAroundVoxel(x, z, scene);
+      toast('Smoothed terrain');
+    } else if (top === BLOCK.GRASS) {
+      // Already grass — level the column down by 1 if it's higher than its lowest neighbor
+      let minNY = gy;
+      for (const [dx, dz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const ny = getGroundY(x + dx, z + dz);
+        if (ny < minNY) minNY = ny;
+      }
+      if (minNY < gy) {
+        setBlock(x, gy - 1, z, BLOCK.AIR);
+        rebuildAroundVoxel(x, z, scene);
+        bumpDirtCount();
+        toast('Leveled');
+      } else {
+        toast('Already smooth');
+      }
+    } else {
+      toast("Can't rake stone");
+    }
+  }
+}
+
+// ============ WEATHER ============
+const weather = { current: 'sunny', rain: null, snow: null };
+
+function buildPrecipitation(count, color, size) {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    positions[i*3+0] = Math.random() * WORLD_SIZE;
+    positions[i*3+1] = Math.random() * 30 + 5;
+    positions[i*3+2] = Math.random() * WORLD_SIZE;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color, size, sizeAttenuation: true,
+    transparent: true, opacity: 0.85, depthWrite: false,
+  });
+  return new THREE.Points(geo, mat);
+}
+
+const rain = buildPrecipitation(1500, 0xa8c0e8, 0.20);
+const snow = buildPrecipitation(900,  0xffffff, 0.32);
+rain.visible = false;
+snow.visible = false;
+scene.add(rain);
+scene.add(snow);
+weather.rain = rain;
+weather.snow = snow;
+
+function applyWeather(name) {
+  weather.current = name;
+  document.querySelectorAll('.weather-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.weather === name);
+  });
+  rain.visible = false;
+  snow.visible = false;
+
+  if (name === 'sunny') {
+    renderer.setClearColor(0x87ceeb);
+    scene.fog.color.setHex(0x87ceeb);
+    scene.fog.near = 70; scene.fog.far = 170;
+    sun.intensity = 0.55;
+    ambient.intensity = 0.7;
+  } else if (name === 'cloudy') {
+    renderer.setClearColor(0x9aa3ad);
+    scene.fog.color.setHex(0x9aa3ad);
+    scene.fog.near = 55; scene.fog.far = 140;
+    sun.intensity = 0.20;
+    ambient.intensity = 0.65;
+  } else if (name === 'rainy') {
+    renderer.setClearColor(0x6c747f);
+    scene.fog.color.setHex(0x6c747f);
+    scene.fog.near = 40; scene.fog.far = 110;
+    sun.intensity = 0.12;
+    ambient.intensity = 0.55;
+    rain.visible = true;
+  } else if (name === 'snowy') {
+    renderer.setClearColor(0xc8cfdc);
+    scene.fog.color.setHex(0xc8cfdc);
+    scene.fog.near = 45; scene.fog.far = 120;
+    sun.intensity = 0.40;
+    ambient.intensity = 0.85;
+    snow.visible = true;
+  }
+}
+
+document.querySelectorAll('.weather-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    applyWeather(btn.dataset.weather);
+    btn.blur();
+    e.stopPropagation();
+  });
+});
+
+function updatePrecipitation(dt) {
+  const camX = camTarget.x, camZ = camTarget.z;
+  const range = 55;
+
+  if (rain.visible) {
+    const pos = rain.geometry.attributes.position.array;
+    const speedY = 32;
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i+1] -= speedY * dt;
+      if (pos[i+1] < 0 || Math.abs(pos[i] - camX) > range || Math.abs(pos[i+2] - camZ) > range) {
+        pos[i]   = camX + (Math.random() - 0.5) * 2 * range;
+        pos[i+1] = 24 + Math.random() * 16;
+        pos[i+2] = camZ + (Math.random() - 0.5) * 2 * range;
+      }
+    }
+    rain.geometry.attributes.position.needsUpdate = true;
+  }
+
+  if (snow.visible) {
+    const pos = snow.geometry.attributes.position.array;
+    const speedY = 3;
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i]   += Math.sin(pos[i+1] * 0.5 + i * 0.001) * dt * 0.5;
+      pos[i+1] -= speedY * dt;
+      if (pos[i+1] < 0 || Math.abs(pos[i] - camX) > range || Math.abs(pos[i+2] - camZ) > range) {
+        pos[i]   = camX + (Math.random() - 0.5) * 2 * range;
+        pos[i+1] = 24 + Math.random() * 16;
+        pos[i+2] = camZ + (Math.random() - 0.5) * 2 * range;
+      }
+    }
+    snow.geometry.attributes.position.needsUpdate = true;
+  }
+}
+
+// ============ BOOT ============
+generateTerrain();
+buildAllChunks(scene);
+
+// Re-snap entities now that terrain exists
+snapToGround(player);
+snapToGround(excavator);
+snapToGround(loader);
+snapToGround(truck);
+
+// Scatter tools in the worker yard now that the terrain is generated
+spawnTool(TOOL.SHOVEL,  SPAWN_X - 2, SPAWN_Z - 2);
+spawnTool(TOOL.PICKAXE, SPAWN_X,     SPAWN_Z - 2);
+spawnTool(TOOL.RAKE,    SPAWN_X + 2, SPAWN_Z - 2);
+
+// Apply default weather
+applyWeather('sunny');
+
+// Place camera focus on player
+camTarget.set(player.position.x, player.position.y + 1, player.position.z);
+onResize();
+updateCameraPosition();
+
+// ============ MAIN LOOP ============
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  if (state.mode === 'foot')             updateFoot(dt);
+  else if (state.mode === 'excavator')   updateExcavator(dt);
+  else if (state.mode === 'loader')      updateLoader(dt);
+  else if (state.mode === 'truck')       updateTruck(dt);
+
+  updateCameraFoot(dt);
+  updatePrecipitation(dt);
+
+  // Edge-trigger reset for keys not pressed this frame
+  for (const k in justPressed._prev) {
+    if (!keys[k]) justPressed._prev[k] = false;
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
