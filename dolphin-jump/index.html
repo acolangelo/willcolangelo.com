@@ -1,0 +1,1205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dolphin Jump</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #e8f7ff;
+      --panel: rgba(7, 15, 33, 0.82);
+      --line: #77d6ff;
+      --gold: #ffd15b;
+      --green: #7cffb2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      overflow: hidden;
+      background: #071226;
+      color: var(--ink);
+      font-family: "Trebuchet MS", "Lucida Console", Monaco, monospace;
+      letter-spacing: 0;
+      user-select: none;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 6px 6px;
+      mix-blend-mode: overlay;
+      opacity: 0.5;
+    }
+
+    #game {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      touch-action: none;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 12px 12px auto 12px;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .panel {
+      border: 3px solid #1a3a64;
+      outline: 2px solid rgba(119, 214, 255, 0.48);
+      background: var(--panel);
+      box-shadow:
+        0 0 0 2px rgba(0, 0, 0, 0.45),
+        0 8px 0 rgba(0, 0, 0, 0.24);
+    }
+
+    .title {
+      width: 176px;
+      padding: 10px 12px;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--gold);
+      font-size: clamp(1.25rem, 3vw, 2.3rem);
+      line-height: 0.88;
+      font-weight: 900;
+      text-transform: uppercase;
+      text-shadow:
+        2px 0 0 #152446,
+        0 2px 0 #152446,
+        3px 3px 0 #06101f;
+    }
+
+    .subtitle {
+      margin-top: 7px;
+      color: #9ce7ff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(68px, auto));
+      gap: 4px;
+      padding: 7px;
+    }
+
+    .stat {
+      min-width: 68px;
+      padding: 5px 7px;
+      border: 2px solid rgba(119, 214, 255, 0.32);
+      background: rgba(5, 10, 24, 0.64);
+    }
+
+    .stat span,
+    .controls span {
+      display: block;
+      color: #78a9c2;
+      font-size: 0.58rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 1px;
+      color: var(--green);
+      font-size: 0.9rem;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .controls {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      z-index: 2;
+      max-width: min(360px, calc(100vw - 24px));
+      padding: 8px 10px;
+      pointer-events: none;
+    }
+
+    .controls strong {
+      color: #fff4ad;
+      font-size: 0.76rem;
+      line-height: 1.5;
+      font-weight: 900;
+    }
+
+    @media (max-width: 760px) {
+      .hud {
+        inset: 8px 8px auto 8px;
+      }
+
+      .title {
+        width: 130px;
+        padding: 8px;
+      }
+
+      .subtitle {
+        display: none;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(62px, auto));
+      }
+
+      .stat {
+        min-width: 62px;
+      }
+
+      .controls {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="Dolphin Jump pixel game"></canvas>
+
+  <div class="hud" aria-hidden="true">
+    <section class="panel title">
+      <h1>Dolphin<br>Jump</h1>
+      <div class="subtitle">pixel ocean adventure</div>
+    </section>
+
+    <section class="panel stats">
+      <div class="stat"><span>Fish</span><strong id="score">0</strong></div>
+      <div class="stat"><span>Speed</span><strong id="speed">Cruise</strong></div>
+      <div class="stat"><span>Zone</span><strong id="zone">Sunlight</strong></div>
+      <div class="stat"><span>Whale</span><strong id="whale">Deep</strong></div>
+    </section>
+  </div>
+
+  <section class="panel controls" aria-hidden="true">
+    <span>Controls</span>
+    <strong>Arrow keys swim &nbsp; W slow &nbsp; E fast &nbsp; Up jumps &nbsp; B bite fish &nbsp; hide in coral</strong>
+  </section>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      const speedEl = document.getElementById("speed");
+      const zoneEl = document.getElementById("zone");
+      const whaleEl = document.getElementById("whale");
+
+      const WORLD_W = 720;
+      const WORLD_H = 405;
+      const WATER = 70;
+      const SUNLIGHT = 189;
+      const TWILIGHT = 289;
+      const MIDNIGHT = 405;
+
+      const buffer = document.createElement("canvas");
+      buffer.width = WORLD_W;
+      buffer.height = WORLD_H;
+      const px = buffer.getContext("2d");
+      px.imageSmoothingEnabled = false;
+
+      const keys = {
+        left: false,
+        right: false,
+        up: false,
+        down: false,
+        slow: false,
+        fast: false
+      };
+
+      const state = {
+        time: 0,
+        last: 0,
+        width: 0,
+        height: 0,
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0,
+        score: 0,
+        speedLabel: "Cruise",
+        zone: "Sunlight",
+        hidden: false,
+        fish: [],
+        reefs: [
+          { x: 78, y: 335, w: 92, h: 47, color: "#ff6767" },
+          { x: 286, y: 330, w: 112, h: 52, color: "#ff9ee5" },
+          { x: 508, y: 325, w: 132, h: 58, color: "#ffb84f" }
+        ],
+        crabs: [
+          { x: 49, y: 374, phase: 0.2, dir: 1 },
+          { x: 226, y: 372, phase: 1.7, dir: -1 },
+          { x: 446, y: 375, phase: 2.9, dir: 1 },
+          { x: 672, y: 373, phase: 4.1, dir: -1 }
+        ],
+        bubbles: [],
+        foam: [],
+        sparks: [],
+        spouts: [],
+        player: {
+          x: 190,
+          y: 145,
+          vx: 18,
+          vy: 0,
+          heading: 0,
+          bite: 0,
+          hurt: 0,
+          stamina: 100
+        },
+        whale: {
+          x: 590,
+          y: 332,
+          dir: -1,
+          mode: "deep",
+          timer: 5,
+          breath: 0,
+          targetY: 328,
+          phase: 0,
+          hitCooldown: 0,
+          spoutClock: 0,
+          fishEaten: 0
+        }
+      };
+
+      let seed = 15;
+      const fishColors = ["#ffca4f", "#ff785f", "#9cf5ff", "#baff73", "#ff9ee5", "#f2f0a0"];
+
+      function random() {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        return seed / 4294967296;
+      }
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function resize() {
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        state.width = Math.max(320, window.innerWidth);
+        state.height = Math.max(420, window.innerHeight);
+        canvas.width = Math.round(state.width * dpr);
+        canvas.height = Math.round(state.height * dpr);
+        canvas.style.width = `${state.width}px`;
+        canvas.style.height = `${state.height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        state.scale = Math.max(state.width / WORLD_W, state.height / WORLD_H);
+        state.offsetX = Math.floor((state.width - WORLD_W * state.scale) * 0.5);
+        state.offsetY = Math.floor((state.height - WORLD_H * state.scale) * 0.5);
+      }
+
+      function setup() {
+        for (let i = 0; i < 32; i++) {
+          state.fish.push(makeFish(random() * WORLD_W, i));
+        }
+        resize();
+        requestAnimationFrame(frame);
+      }
+
+      function makeFish(x, index = 0) {
+        const zoneChoice = random();
+        const y = zoneChoice < 0.58
+          ? WATER + 18 + random() * 72
+          : WATER + 28 + random() * (WORLD_H - WATER - 42);
+        return {
+          x,
+          y,
+          vx: -(18 + random() * 33),
+          size: random() < 0.22 ? 1.35 : 1,
+          color: fishColors[(index + Math.floor(random() * fishColors.length)) % fishColors.length],
+          bob: random() * Math.PI * 2,
+          eaten: false
+        };
+      }
+
+      function respawnFish(fish, fromRight = true) {
+        const fresh = makeFish(fromRight ? WORLD_W + 24 + random() * 170 : random() * WORLD_W);
+        Object.assign(fish, fresh);
+      }
+
+      function frame(now) {
+        const dt = Math.min(0.034, (now - state.last) / 1000 || 0.016);
+        state.last = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(frame);
+      }
+
+      function update(dt) {
+        state.time += dt;
+        updatePlayer(dt);
+        updateFish(dt);
+        updateWhale(dt);
+        updateCrabs(dt);
+        updateParticles(dt);
+        updateHud();
+      }
+
+      function updatePlayer(dt) {
+        const player = state.player;
+        const previousY = player.y;
+        const inputX = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+        const inputY = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+        const inputLength = Math.hypot(inputX, inputY);
+        const nx = inputLength ? inputX / inputLength : 0;
+        const ny = inputLength ? inputY / inputLength : 0;
+        const inWater = player.y >= WATER;
+        const fastActive = keys.fast && player.stamina > 1;
+        const slowActive = keys.slow && !keys.fast;
+        const topSpeed = fastActive ? 122 : slowActive ? 43 : 75;
+
+        state.speedLabel = fastActive ? "Fast" : slowActive ? "Slow" : "Cruise";
+
+        if (inputLength) {
+          player.heading = Math.atan2(ny, nx);
+        } else if (!inWater && Math.hypot(player.vx, player.vy) > 8) {
+          player.heading = Math.atan2(player.vy, player.vx);
+        }
+
+        if (inWater) {
+          const accel = fastActive ? 520 : slowActive ? 230 : 360;
+          player.vx += nx * accel * dt;
+          player.vy += ny * accel * dt;
+          player.vy += 14 * dt;
+
+          if (keys.up && player.y < WATER + 20) {
+            player.vy -= (fastActive ? 260 : 170) * dt;
+          }
+
+          const speed = Math.hypot(player.vx, player.vy);
+          if (speed > topSpeed) {
+            player.vx = player.vx / speed * topSpeed;
+            player.vy = player.vy / speed * topSpeed;
+          }
+
+          const drag = Math.pow(inputLength ? 0.18 : 0.045, dt);
+          player.vx *= drag;
+          player.vy *= drag;
+          player.stamina = clamp(player.stamina + (fastActive ? -11 : slowActive ? 9 : 3) * dt, 0, 100);
+        } else {
+          player.vy += 250 * dt;
+          player.vx += nx * 55 * dt;
+          player.vx *= Math.pow(0.82, dt);
+          if (keys.down) player.vy += 65 * dt;
+          player.stamina = clamp(player.stamina - 1.4 * dt, 0, 100);
+        }
+
+        player.x += player.vx * dt;
+        player.y += player.vy * dt;
+
+        if (previousY >= WATER && player.y < WATER) {
+          makeSplash(player.x, WATER, Math.max(10, Math.abs(player.vy) * 0.13));
+        }
+
+        if (previousY < WATER && player.y >= WATER) {
+          makeSplash(player.x, WATER, Math.max(14, Math.abs(player.vy) * 0.18));
+          player.vy *= 0.55;
+        }
+
+        if (player.x < 24) {
+          player.x = 24;
+          player.vx = Math.abs(player.vx) * 0.35;
+        }
+        if (player.x > WORLD_W - 24) {
+          player.x = WORLD_W - 24;
+          player.vx = -Math.abs(player.vx) * 0.35;
+        }
+        if (player.y < 12) {
+          player.y = 12;
+          player.vy = Math.max(player.vy, 6);
+        }
+        if (player.y > WORLD_H - 28) {
+          player.y = WORLD_H - 28;
+          player.vy = -Math.abs(player.vy) * 0.18;
+          player.vx *= 0.8;
+          kickSand(player.x, WORLD_H - 23);
+        }
+
+        player.bite = Math.max(0, player.bite - dt);
+        player.hurt = Math.max(0, player.hurt - dt);
+        state.hidden = isInReef(player.x, player.y);
+        state.zone = zoneFor(player.y);
+      }
+
+      function updateFish(dt) {
+        for (const fish of state.fish) {
+          if (fish.eaten) continue;
+          fish.x += fish.vx * dt;
+          fish.y += Math.sin(state.time * 2.8 + fish.bob) * 4 * dt;
+          if (fish.x < -22) {
+            respawnFish(fish);
+          }
+        }
+      }
+
+      function updateWhale(dt) {
+        const whale = state.whale;
+        whale.phase += dt;
+        whale.timer -= dt;
+        whale.hitCooldown = Math.max(0, whale.hitCooldown - dt);
+        whale.spoutClock = Math.max(0, whale.spoutClock - dt);
+
+        if (whale.x < -110) whale.dir = 1;
+        if (whale.x > WORLD_W + 110) whale.dir = -1;
+
+        const speed = whale.mode === "breathing" ? 12 : whale.mode === "rising" ? 20 : 25;
+        whale.x += whale.dir * speed * dt;
+
+        if (whale.mode === "deep") {
+          whale.targetY = TWILIGHT + 32 + Math.sin(whale.phase * 0.62) * 11;
+          whale.y += (whale.targetY - whale.y) * Math.min(1, 1.5 * dt);
+          if (whale.timer <= 0) {
+            whale.mode = "rising";
+            whale.timer = 3.4;
+          }
+        } else if (whale.mode === "rising") {
+          whale.y -= 25 * dt;
+          whale.y += Math.sin(whale.phase * 1.4) * 3 * dt;
+          if (whale.y <= WATER + 24) {
+            whale.y = WATER + 24;
+            whale.mode = "breathing";
+            whale.breath = 2.75;
+            whale.timer = 2.75;
+            makeSplash(whale.x + whale.dir * 38, WATER, 24);
+          }
+        } else if (whale.mode === "breathing") {
+          whale.y += (WATER + 24 + Math.sin(whale.phase * 4) * 1.5 - whale.y) * Math.min(1, 4 * dt);
+          whale.breath -= dt;
+          if (whale.spoutClock <= 0) {
+            emitSpout(whale.x + whale.dir * 34, WATER - 5);
+            whale.spoutClock = 0.105;
+          }
+          if (whale.breath <= 0) {
+            whale.mode = "diving";
+            whale.targetY = TWILIGHT + 22 + random() * 42;
+            whale.timer = 3.8;
+          }
+        } else if (whale.mode === "diving") {
+          whale.y += 28 * dt;
+          if (whale.y >= whale.targetY) {
+            whale.mode = "deep";
+            whale.timer = 6 + random() * 5;
+          }
+        }
+
+        whaleEatFish();
+
+        const player = state.player;
+        const dx = (player.x - whale.x) / 76;
+        const dy = (player.y - whale.y) / 32;
+        if (!state.hidden && dx * dx + dy * dy < 1 && whale.hitCooldown <= 0) {
+          whale.hitCooldown = 1.15;
+          player.hurt = 1;
+          player.vx = -whale.dir * 82;
+          player.vy = -86;
+          state.score = Math.max(0, state.score - 1);
+          makeSplash(player.x, player.y, 18);
+        }
+      }
+
+      function whaleEatFish() {
+        const whale = state.whale;
+        const mouthX = whale.x + whale.dir * 70;
+        const mouthY = whale.y + 4;
+        for (const fish of state.fish) {
+          if (fish.eaten) continue;
+          const distance = Math.hypot(fish.x - mouthX, fish.y - mouthY);
+          if (distance < 24 + fish.size * 5) {
+            fish.eaten = true;
+            whale.fishEaten += 1;
+            for (let i = 0; i < 10; i++) {
+              state.sparks.push({
+                x: fish.x,
+                y: fish.y,
+                vx: (random() - 0.5) * 56,
+                vy: (random() - 0.5) * 38,
+                color: fish.color,
+                age: 0,
+                life: 0.28 + random() * 0.2
+              });
+            }
+            for (let i = 0; i < 5; i++) {
+              state.bubbles.push({
+                x: mouthX + (random() - 0.5) * 14,
+                y: mouthY + (random() - 0.5) * 8,
+                vx: -whale.dir * (8 + random() * 22),
+                vy: -12 - random() * 24,
+                age: 0,
+                life: 0.45 + random() * 0.28,
+                size: 2 + random() * 2
+              });
+            }
+            window.setTimeout(() => respawnFish(fish), 160);
+            break;
+          }
+        }
+      }
+
+      function updateCrabs(dt) {
+        const floorTop = WORLD_H - 26;
+        for (const crab of state.crabs) {
+          crab.phase += dt * 3;
+          crab.x += crab.dir * (5 + Math.sin(crab.phase) * 2) * dt;
+          if (crab.x < 24 || crab.x > WORLD_W - 24) crab.dir *= -1;
+          crab.y = floorTop - 5 + Math.sin(crab.phase * 2) * 1.5;
+        }
+      }
+
+      function updateParticles(dt) {
+        stepList(state.bubbles, dt, (bubble) => {
+          bubble.age += dt;
+          bubble.x += bubble.vx * dt;
+          bubble.y += bubble.vy * dt;
+          bubble.vy -= 8 * dt;
+          bubble.vx *= Math.pow(0.35, dt);
+          return bubble.age < bubble.life && bubble.y > WATER - 15;
+        });
+
+        stepList(state.foam, dt, (foam) => {
+          foam.age += dt;
+          foam.x += foam.vx * dt;
+          foam.y += foam.vy * dt;
+          foam.vy += 28 * dt;
+          return foam.age < foam.life;
+        });
+
+        stepList(state.sparks, dt, (spark) => {
+          spark.age += dt;
+          spark.x += spark.vx * dt;
+          spark.y += spark.vy * dt;
+          spark.vy += 20 * dt;
+          return spark.age < spark.life;
+        });
+
+        stepList(state.spouts, dt, (spout) => {
+          spout.age += dt;
+          spout.x += spout.vx * dt;
+          spout.y += spout.vy * dt;
+          spout.vy += 62 * dt;
+          return spout.age < spout.life;
+        });
+      }
+
+      function stepList(list, dt, updater) {
+        for (let i = list.length - 1; i >= 0; i--) {
+          if (!updater(list[i], dt)) list.splice(i, 1);
+        }
+      }
+
+      function bite() {
+        const player = state.player;
+        player.bite = 0.18;
+        const mouth = {
+          x: player.x + Math.cos(player.heading) * 45,
+          y: player.y + Math.sin(player.heading) * 45
+        };
+        let best = null;
+        let bestDistance = Infinity;
+
+        for (const fish of state.fish) {
+          if (fish.eaten) continue;
+          const distance = Math.hypot(fish.x - mouth.x, fish.y - mouth.y);
+          if (distance < bestDistance && distance < 22 + fish.size * 5) {
+            best = fish;
+            bestDistance = distance;
+          }
+        }
+
+        if (best) {
+          best.eaten = true;
+          state.score += 1;
+          state.player.stamina = clamp(state.player.stamina + 10, 0, 100);
+          for (let i = 0; i < 14; i++) {
+            state.sparks.push({
+              x: best.x,
+              y: best.y,
+              vx: (random() - 0.5) * 72,
+              vy: (random() - 0.5) * 52,
+              color: best.color,
+              age: 0,
+              life: 0.32 + random() * 0.2
+            });
+          }
+          window.setTimeout(() => respawnFish(best), 120);
+        } else {
+          for (let i = 0; i < 6; i++) {
+            state.bubbles.push({
+              x: mouth.x + (random() - 0.5) * 7,
+              y: mouth.y + (random() - 0.5) * 7,
+              vx: (random() - 0.5) * 22,
+              vy: -18 - random() * 25,
+              age: 0,
+              life: 0.55 + random() * 0.42,
+              size: 2 + random() * 2
+            });
+          }
+        }
+      }
+
+      function emitSpout(x, y) {
+        for (let i = 0; i < 3; i++) {
+          state.spouts.push({
+            x: x + (random() - 0.5) * 4,
+            y,
+            vx: (random() - 0.5) * 32,
+            vy: -72 - random() * 46,
+            size: 2 + random() * 3,
+            age: 0,
+            life: 0.7 + random() * 0.36
+          });
+        }
+      }
+
+      function makeSplash(x, y, power) {
+        for (let i = 0; i < power; i++) {
+          state.foam.push({
+            x: x + (random() - 0.5) * power * 1.5,
+            y: y + (random() - 0.5) * 4,
+            vx: (random() - 0.5) * 58,
+            vy: -16 - random() * 45,
+            age: 0,
+            life: 0.35 + random() * 0.42,
+            size: 1 + random() * 3
+          });
+        }
+      }
+
+      function kickSand(x, y) {
+        if (state.time % 0.2 > 0.035) return;
+        for (let i = 0; i < 4; i++) {
+          state.sparks.push({
+            x: x + (random() - 0.5) * 24,
+            y,
+            vx: (random() - 0.5) * 22,
+            vy: -10 - random() * 18,
+            color: "#b8894a",
+            age: 0,
+            life: 0.28
+          });
+        }
+      }
+
+      function zoneFor(y) {
+        if (y < WATER) return "Air";
+        if (y < SUNLIGHT) return "Sunlight";
+        if (y < TWILIGHT) return "Twilight";
+        return "Midnight";
+      }
+
+      function isInReef(x, y) {
+        return state.reefs.some((reef) => (
+          x > reef.x - 8 &&
+          x < reef.x + reef.w + 8 &&
+          y > reef.y - 20 &&
+          y < reef.y + reef.h + 12
+        ));
+      }
+
+      function updateHud() {
+        scoreEl.textContent = String(state.score);
+        speedEl.textContent = state.speedLabel;
+        zoneEl.textContent = state.hidden ? "Hidden" : state.zone;
+        whaleEl.textContent = `${state.whale.mode.charAt(0).toUpperCase()}${state.whale.mode.slice(1)} ${state.whale.fishEaten}`;
+      }
+
+      function draw() {
+        px.imageSmoothingEnabled = false;
+        px.clearRect(0, 0, WORLD_W, WORLD_H);
+        drawBackground();
+        drawFish();
+        drawWhale();
+        drawDolphin();
+        drawParticles();
+        drawReefForeground();
+        drawSurfaceHighlights();
+        drawScreenDither();
+
+        ctx.clearRect(0, 0, state.width, state.height);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(
+          buffer,
+          0,
+          0,
+          WORLD_W,
+          WORLD_H,
+          state.offsetX,
+          state.offsetY,
+          Math.ceil(WORLD_W * state.scale),
+          Math.ceil(WORLD_H * state.scale)
+        );
+      }
+
+      function drawBackground() {
+        rect(0, 0, WORLD_W, WATER, "#9bdcff");
+        rect(0, 0, WORLD_W, 9, "#e6faff");
+        rect(0, WATER, WORLD_W, SUNLIGHT - WATER, "#27abc1");
+        rect(0, SUNLIGHT, WORLD_W, TWILIGHT - SUNLIGHT, "#176291");
+        rect(0, TWILIGHT, WORLD_W, MIDNIGHT - TWILIGHT, "#0a1537");
+
+        drawPixelSun(594, 28);
+        drawVoxelCloud(88, 28, 1);
+        drawVoxelCloud(320, 22, 0.75);
+        drawSunRays();
+        drawLayerTexture(WATER, SUNLIGHT, "#72e7da", "#1b8dac", 5);
+        drawLayerTexture(SUNLIGHT, TWILIGHT, "#2c8eb6", "#124e7b", 6);
+        drawLayerTexture(TWILIGHT, MIDNIGHT, "#162a59", "#070d25", 7);
+        drawZoneSigns();
+        drawSeaFloor();
+      }
+
+      function drawPixelSun(cx, cy) {
+        const colors = ["#fff3a7", "#ffd15b", "#e99b35"];
+        rect(cx - 10, cy - 14, 20, 4, colors[0]);
+        rect(cx - 16, cy - 10, 32, 8, colors[0]);
+        rect(cx - 20, cy - 2, 40, 14, colors[1]);
+        rect(cx - 16, cy + 12, 32, 7, colors[1]);
+        rect(cx - 8, cy + 19, 16, 4, colors[2]);
+        rect(cx - 34, cy, 8, 3, "#fff4b8");
+        rect(cx + 27, cy + 4, 10, 3, "#fff4b8");
+        rect(cx - 3, cy - 29, 4, 9, "#fff4b8");
+        rect(cx - 2, cy + 28, 4, 8, "#e99b35");
+      }
+
+      function drawVoxelCloud(x, y, scale) {
+        px.save();
+        px.translate(Math.round(x), Math.round(y));
+        px.scale(scale, scale);
+        rect(-27, 3, 66, 10, "#e9fbff");
+        rect(-18, -3, 39, 9, "#f9ffff");
+        rect(10, -8, 22, 12, "#f2ffff");
+        rect(-30, 12, 55, 5, "#b7e8f6");
+        rect(27, 9, 19, 6, "#b7e8f6");
+        px.restore();
+      }
+
+      function drawSunRays() {
+        for (let i = 0; i < 8; i++) {
+          const x = 42 + i * 79 + Math.sin(state.time * 0.35 + i) * 4;
+          polygon([[x, WATER], [x + 19, WATER], [x + 66, TWILIGHT - 18], [x + 36, TWILIGHT - 18]], "rgba(255, 242, 139, 0.18)");
+          for (let y = WATER + 9; y < TWILIGHT - 20; y += 21) {
+            rect(x + ((y + i * 7) % 18), y, 7, 2, "rgba(255, 249, 180, 0.18)");
+          }
+        }
+      }
+
+      function drawLayerTexture(top, bottom, light, dark, step) {
+        for (let y = top + 3; y < bottom; y += step) {
+          for (let x = (y * 3) % 17; x < WORLD_W; x += 34) {
+            rect(x, y, 8, 2, (x + y) % 3 ? light : dark);
+          }
+        }
+        for (let y = top + 6; y < bottom; y += step * 2) {
+          for (let x = (y * 5) % 23; x < WORLD_W; x += 47) {
+            rect(x, y, 3, 3, "rgba(255,255,255,0.08)");
+          }
+        }
+      }
+
+      function drawZoneSigns() {
+        drawPixelLabel(8, WATER + 16, "SUNLIGHT ZONE", "#fff69b");
+        drawPixelLabel(8, SUNLIGHT + 19, "TWILIGHT ZONE", "#9ce7ff");
+        drawPixelLabel(8, TWILIGHT + 21, "MIDNIGHT ZONE", "#b5a7ff");
+        dashedLine(SUNLIGHT, "#8ee8ff");
+        dashedLine(TWILIGHT, "#5964b8");
+      }
+
+      function dashedLine(y, color) {
+        for (let x = 0; x < WORLD_W; x += 13) {
+          rect(x, y, 8, 1, color);
+        }
+      }
+
+      function drawPixelLabel(x, y, text, color) {
+        rect(x - 4, y - 8, 82, 13, "rgba(3, 9, 24, 0.54)");
+        rect(x - 4, y - 8, 82, 2, "rgba(255,255,255,0.2)");
+        px.font = "bold 6px Monaco, monospace";
+        px.fillStyle = "#06101f";
+        px.fillText(text, x + 1, y + 1);
+        px.fillStyle = color;
+        px.fillText(text, x, y);
+      }
+
+      function drawSeaFloor() {
+        const floorTop = WORLD_H - 26;
+        rect(0, floorTop, WORLD_W, 26, "#6b4d34");
+        for (let x = -8; x < WORLD_W + 16; x += 16) {
+          const h = 4 + ((x * 5) % 9);
+          rect(x, floorTop - 4 - h, 18, h + 7, x % 3 ? "#a1703f" : "#b98546");
+          rect(x + 3, floorTop - 2 - h, 6, 2, "#ddb468");
+        }
+        for (let i = 0; i < 34; i++) {
+          const x = (i * 37 + 21) % WORLD_W;
+          const h = 12 + (i % 5) * 4;
+          rect(x, floorTop - 4 - h, 3, h, "#194f45");
+          rect(x - 4, floorTop + 2 - h, 5, 3, "#27735f");
+          rect(x + 2, floorTop - 8 - h, 6, 3, "#2d8a6b");
+        }
+        for (const reef of state.reefs) {
+          drawCoralReef(reef, "back");
+        }
+        for (const crab of state.crabs) {
+          drawCrab(crab);
+        }
+      }
+
+      function drawCoralReef(reef, layer) {
+        const baseY = reef.y + reef.h;
+        const dark = shade(reef.color, -42);
+        const mid = shade(reef.color, -8);
+        const light = shade(reef.color, 28);
+        const rock = layer === "front" ? "#805b3b" : "#553b30";
+        const alpha = layer === "front" ? 1 : 0.78;
+
+        px.save();
+        px.globalAlpha = alpha;
+        rect(reef.x - 8, baseY - 11, reef.w + 16, 13, "#3a2f35");
+        rect(reef.x + 8, baseY - 19, 29, 13, rock);
+        rect(reef.x + reef.w - 42, baseY - 23, 39, 16, rock);
+        rect(reef.x + reef.w * 0.46, baseY - 16, 34, 12, "#6d4d42");
+
+        const count = layer === "front" ? 11 : 8;
+        for (let i = 0; i < count; i++) {
+          const x = reef.x + 9 + ((i * 19) % Math.max(20, reef.w - 16));
+          const h = 23 + ((i * 7) % 28);
+          const y = baseY - h;
+          const branch = i % 3;
+          rect(x, y, 5, h, branch === 0 ? reef.color : mid);
+          rect(x - 5, y + 8, 8, 4, branch === 1 ? light : mid);
+          rect(x + 3, y + 14, 9, 4, branch === 2 ? light : mid);
+          rect(x - 3, y - 3, 11, 5, light);
+          if (i % 2 === 0) {
+            rect(x + 10, y + 13, 5, 16, "#7df0c8");
+            rect(x + 7, y + 13, 8, 3, "#b8ffe3");
+            rect(x + 9, y + 5, 4, 8, "#46bf9e");
+          }
+          if (i % 4 === 0) {
+            rect(x - 8, baseY - 17, 8, 13, "#f4d14d");
+            rect(x - 6, baseY - 20, 4, 3, "#fff08a");
+          }
+        }
+
+        for (let i = 0; i < 10; i++) {
+          const x = reef.x + 5 + ((i * 23) % reef.w);
+          const y = baseY - 5 - ((i * 11) % 31);
+          rect(x, y, 3, 3, i % 2 ? "#5ee8ff" : "#fff08a");
+        }
+
+        px.restore();
+      }
+
+      function drawReefForeground() {
+        for (const reef of state.reefs) {
+          drawCoralReef(reef, "front");
+        }
+      }
+
+      function drawCrab(crab) {
+        const x = Math.round(crab.x);
+        const y = Math.round(crab.y);
+        const claw = Math.round(Math.sin(crab.phase * 3) * 2);
+        px.save();
+        px.translate(x, y);
+        px.scale(crab.dir, 1);
+        rect(-12, -5, 24, 9, "#65191a");
+        rect(-9, -7, 18, 6, "#e54737");
+        rect(-13, -2, 26, 7, "#c92d2d");
+        rect(-7, -10, 3, 4, "#101018");
+        rect(4, -10, 3, 4, "#101018");
+        rect(-6, -10, 1, 1, "#ffffff");
+        rect(5, -10, 1, 1, "#ffffff");
+        rect(-23, -11 - claw, 8, 6, "#e54737");
+        rect(-28, -8 - claw, 7, 4, "#ff735f");
+        rect(15, -11 + claw, 8, 6, "#e54737");
+        rect(21, -8 + claw, 7, 4, "#ff735f");
+        for (let i = 0; i < 3; i++) {
+          rect(-14 + i * 5, 4 + i % 2, 9, 2, "#7e1e1f");
+          rect(5 + i * 5, 4 + (i + 1) % 2, 9, 2, "#7e1e1f");
+        }
+        px.restore();
+      }
+
+      function drawFish() {
+        for (const fish of state.fish) {
+          if (fish.eaten) continue;
+          px.save();
+          px.translate(Math.round(fish.x), Math.round(fish.y));
+          px.scale(fish.size, fish.size);
+          rect(-8, -3, 14, 2, "#071326");
+          rect(-10, -1, 20, 5, "#071326");
+          rect(-6, 4, 13, 2, "#071326");
+          rect(-7, -2, 13, 2, fish.color);
+          rect(-9, 0, 17, 4, fish.color);
+          rect(-5, 4, 10, 1, shade(fish.color, -22));
+          rect(8, -4, 5, 3, shade(fish.color, -30));
+          rect(8, 2, 5, 3, shade(fish.color, -30));
+          rect(-7, -1, 1, 1, "#06101f");
+          rect(-1, -2, 5, 1, "rgba(255,255,255,0.45)");
+          px.restore();
+        }
+      }
+
+      function drawDolphin() {
+        const player = state.player;
+        px.save();
+        px.translate(Math.round(player.x), Math.round(player.y));
+        px.rotate(player.heading);
+        if (state.hidden) px.globalAlpha = 0.58;
+
+        const hurt = player.hurt > 0 && Math.floor(state.time * 18) % 2 === 0;
+        const body = hurt ? "#ff8a9a" : "#5cc7df";
+        const light = hurt ? "#ffc4ca" : "#a2f5ff";
+        const shadeBlue = hurt ? "#a64c67" : "#247c9c";
+        const deepBlue = hurt ? "#713349" : "#17657f";
+        const outline = "#06101f";
+        const tailWave = Math.round(Math.sin(state.time * 9) * 2);
+
+        rect(-50, -13 + tailWave, 15, 5, outline);
+        rect(-59, -21 + tailWave, 13, 8, outline);
+        rect(-55, -15 + tailWave, 18, 5, outline);
+        rect(-50, 9 - tailWave, 15, 5, outline);
+        rect(-59, 15 - tailWave, 13, 8, outline);
+        rect(-55, 11 - tailWave, 18, 5, outline);
+        rect(-44, -14, 30, 3, outline);
+        rect(-50, -11, 61, 4, outline);
+        rect(-54, -7, 81, 5, outline);
+        rect(-56, -2, 93, 8, outline);
+        rect(-52, 6, 79, 6, outline);
+        rect(-44, 12, 53, 4, outline);
+        rect(-26, 16, 30, 3, outline);
+        rect(24, -8, 27, 5, outline);
+        rect(30, -4, 29, 8, outline);
+        rect(49, -1, 13, 4, outline);
+        rect(-15, -23, 14, 10, outline);
+        rect(-9, -31, 12, 9, outline);
+        rect(-2, -36, 8, 8, outline);
+        rect(-3, 11, 16, 6, outline);
+        rect(3, 16, 16, 6, outline);
+        rect(10, 21, 11, 5, outline);
+
+        rect(-47, -11 + tailWave, 11, 3, shadeBlue);
+        rect(-56, -19 + tailWave, 9, 5, shadeBlue);
+        rect(-52, -14 + tailWave, 14, 3, shadeBlue);
+        rect(-47, 10 - tailWave, 11, 3, shadeBlue);
+        rect(-56, 16 - tailWave, 9, 5, shadeBlue);
+        rect(-52, 12 - tailWave, 14, 3, shadeBlue);
+        rect(-41, -12, 27, 2, deepBlue);
+        rect(-47, -9, 56, 4, shadeBlue);
+        rect(-51, -5, 76, 5, body);
+        rect(-53, 0, 88, 5, body);
+        rect(-48, 5, 72, 5, shadeBlue);
+        rect(-39, 10, 45, 3, light);
+        rect(-22, 14, 24, 2, light);
+        rect(25, -5, 25, 5, body);
+        rect(31, 0, 26, 3, body);
+        rect(49, 0, 10, 2, light);
+        rect(15, -8, 16, 2, light);
+        rect(-27, -8, 31, 2, light);
+        rect(-12, -21, 11, 8, shadeBlue);
+        rect(-6, -28, 9, 7, shadeBlue);
+        rect(0, -33, 5, 6, shadeBlue);
+        rect(0, 12, 12, 4, shadeBlue);
+        rect(6, 17, 11, 4, shadeBlue);
+        rect(12, 22, 7, 3, shadeBlue);
+        rect(30, -9, 3, 3, "#06101f");
+        rect(31, -9, 1, 1, "#ffffff");
+        rect(7, -11, 9, 1, "#06101f");
+
+        if (player.bite > 0) {
+          rect(43, 4, 14, 2, "#06101f");
+          rect(46, 6, 8, 2, "#f85353");
+        } else {
+          rect(41, 4, 13, 1, "#06101f");
+        }
+
+        px.restore();
+      }
+
+      function drawWhale() {
+        const whale = state.whale;
+        px.save();
+        px.translate(Math.round(whale.x), Math.round(whale.y));
+        px.scale(whale.dir, 1);
+        px.translate(0, Math.round(Math.sin(whale.phase * 2) * 1));
+
+        const outline = "#040814";
+        const dark = "#2c3148";
+        const mid = whale.mode === "breathing" ? "#636a82" : "#50566f";
+        const top = "#697087";
+        const belly = "#c8c9b8";
+        const jaw = "#dedeca";
+
+        rect(-102, -8, 27, 17, outline);
+        rect(-95, -17, 18, 9, outline);
+        rect(-95, 8, 18, 9, outline);
+        rect(-80, -19, 92, 39, outline);
+        rect(-15, -25, 87, 51, outline);
+        rect(4, -31, 57, 11, outline);
+        rect(66, -18, 10, 33, outline);
+
+        rect(-98, -5, 23, 11, dark);
+        rect(-92, -15, 15, 7, dark);
+        rect(-92, 8, 15, 7, dark);
+        rect(-76, -16, 87, 33, mid);
+        rect(-70, -20, 68, 8, top);
+        rect(-68, 12, 75, 8, dark);
+        rect(-12, -22, 79, 43, mid);
+        rect(8, -28, 51, 8, top);
+        rect(6, 8, 61, 13, jaw);
+        rect(-34, 12, 48, 8, belly);
+        rect(64, -14, 7, 25, "#5d637a");
+
+        rect(31, -17, 5, 4, "#f7f3d6");
+        rect(33, -16, 2, 2, "#030612");
+        rect(14, -24, 15, 2, "#12182b");
+        rect(10, 4, 54, 2, "#14192a");
+        rect(17, 12, 37, 1, "#8f927e");
+        for (let i = 0; i < 7; i++) {
+          rect(12 + i * 7, 15 + (i % 2), 3, 1, "#8f927e");
+        }
+
+        rect(-25, 19, 20, 8, outline);
+        rect(-22, 20, 16, 6, dark);
+        rect(-56, -12, 22, 2, "#767d92");
+        rect(-48, -7, 17, 2, "#767d92");
+
+        if (whale.mode === "breathing") {
+          rect(16, -33, 13, 2, "#e9fbff");
+          rect(21, -36, 5, 3, "#c9f2ff");
+        }
+
+        px.restore();
+      }
+
+      function drawParticles() {
+        for (const bubble of state.bubbles) {
+          const a = 1 - bubble.age / bubble.life;
+          rect(bubble.x, bubble.y, bubble.size, bubble.size, `rgba(213, 249, 255, ${0.55 * a})`);
+          rect(bubble.x + 1, bubble.y, 1, 1, `rgba(255,255,255,${0.7 * a})`);
+        }
+
+        for (const foam of state.foam) {
+          const a = 1 - foam.age / foam.life;
+          rect(foam.x, foam.y, foam.size, foam.size, `rgba(238, 255, 255, ${0.75 * a})`);
+        }
+
+        for (const spark of state.sparks) {
+          const a = 1 - spark.age / spark.life;
+          rect(spark.x, spark.y, 2, 2, withAlpha(spark.color, a));
+        }
+
+        for (const spout of state.spouts) {
+          const a = 1 - spout.age / spout.life;
+          rect(spout.x, spout.y, spout.size, spout.size + 1, `rgba(231, 250, 255, ${0.8 * a})`);
+          rect(spout.x + 1, spout.y - 2, Math.max(1, spout.size - 1), 1, `rgba(255, 255, 255, ${0.75 * a})`);
+        }
+      }
+
+      function drawSurfaceHighlights() {
+        for (let x = -8; x < WORLD_W + 8; x += 8) {
+          const y = WATER + Math.round(Math.sin(state.time * 2.2 + x * 0.11) * 2);
+          rect(x, y, 7, 2, "#cbf8ff");
+          if (x % 24 === 0) rect(x + 2, y + 4, 10, 1, "#37c6d2");
+        }
+        rect(0, WATER - 1, WORLD_W, 1, "rgba(255,255,255,0.28)");
+      }
+
+      function drawScreenDither() {
+        for (let y = 1; y < WORLD_H; y += 4) {
+          for (let x = (y % 8); x < WORLD_W; x += 8) {
+            rect(x, y, 1, 1, "rgba(255,255,255,0.045)");
+          }
+        }
+        rect(0, 0, WORLD_W, 2, "rgba(255,255,255,0.1)");
+        rect(0, WORLD_H - 2, WORLD_W, 2, "rgba(0,0,0,0.22)");
+      }
+
+      function rect(x, y, w, h, color) {
+        px.fillStyle = color;
+        px.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
+      }
+
+      function polygon(points, color) {
+        px.fillStyle = color;
+        px.beginPath();
+        px.moveTo(Math.round(points[0][0]), Math.round(points[0][1]));
+        for (let i = 1; i < points.length; i++) {
+          px.lineTo(Math.round(points[i][0]), Math.round(points[i][1]));
+        }
+        px.closePath();
+        px.fill();
+      }
+
+      function shade(hex, percent) {
+        const raw = hex.replace("#", "");
+        const n = Number.parseInt(raw, 16);
+        const amount = Math.round(2.55 * percent);
+        const r = clamp((n >> 16) + amount, 0, 255);
+        const g = clamp(((n >> 8) & 255) + amount, 0, 255);
+        const b = clamp((n & 255) + amount, 0, 255);
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+
+      function withAlpha(hex, alpha) {
+        const raw = hex.replace("#", "");
+        const n = Number.parseInt(raw, 16);
+        return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+      }
+
+      function bindControls() {
+        window.addEventListener("keydown", (event) => {
+          const key = event.key.toLowerCase();
+          let handled = true;
+
+          if (event.key === "ArrowLeft") keys.left = true;
+          else if (event.key === "ArrowRight") keys.right = true;
+          else if (event.key === "ArrowUp") keys.up = true;
+          else if (event.key === "ArrowDown") keys.down = true;
+          else if (key === "w") keys.slow = true;
+          else if (key === "e") keys.fast = true;
+          else if (key === "b" && !event.repeat) bite();
+          else handled = false;
+
+          if (handled) event.preventDefault();
+        });
+
+        window.addEventListener("keyup", (event) => {
+          if (event.key === "ArrowLeft") keys.left = false;
+          else if (event.key === "ArrowRight") keys.right = false;
+          else if (event.key === "ArrowUp") keys.up = false;
+          else if (event.key === "ArrowDown") keys.down = false;
+          else if (event.key.toLowerCase() === "w") keys.slow = false;
+          else if (event.key.toLowerCase() === "e") keys.fast = false;
+        });
+      }
+
+      window.addEventListener("resize", resize);
+      bindControls();
+      setup();
+    })();
+  </script>
+</body>
+</html>
