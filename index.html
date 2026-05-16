@@ -299,6 +299,28 @@
           #061825;
       }
 
+      .dolphin .cover {
+        background:
+          linear-gradient(180deg, #9bdcff 0 29%, #27abc1 29% 58%, #176291 58% 82%, #0a1537 82%),
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 6px);
+        image-rendering: pixelated;
+      }
+
+      .dolphin .title-strip {
+        background:
+          linear-gradient(90deg, #77d6ff 0 8px, transparent 8px),
+          linear-gradient(90deg, rgba(124, 255, 178, 0.12), transparent 44%),
+          #071226;
+      }
+
+      .dolphin .game-title {
+        color: #ffd15b;
+        text-shadow:
+          2px 0 0 #152446,
+          0 2px 0 #152446,
+          3px 3px 0 #06101f;
+      }
+
       @media (max-width: 960px) {
         .game-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -538,6 +560,108 @@
             <span class="title-strip">
               <strong class="game-title">Mosasaur Hunt</strong>
               <span class="game-meta">Prehistoric <span class="seal">WG</span></span>
+            </span>
+          </span>
+        </a>
+
+        <a class="cartridge dolphin" href="./dolphin-jump/" aria-label="Play Dolphin Jump">
+          <span class="notch" aria-hidden="true"></span>
+          <span class="screw left" aria-hidden="true"></span>
+          <span class="screw right" aria-hidden="true"></span>
+
+          <span class="label">
+            <span class="cover" aria-hidden="true">
+              <svg viewBox="0 0 360 245" role="img" shape-rendering="crispEdges">
+                <rect width="360" height="245" fill="#071226"/>
+                <rect width="360" height="70" fill="#9bdcff"/>
+                <rect y="70" width="360" height="76" fill="#27abc1"/>
+                <rect y="146" width="360" height="54" fill="#176291"/>
+                <rect y="200" width="360" height="45" fill="#0a1537"/>
+                <g fill="#e9fbff">
+                  <rect x="24" y="24" width="56" height="8"/>
+                  <rect x="42" y="16" width="34" height="8"/>
+                  <rect x="258" y="31" width="52" height="7"/>
+                  <rect x="284" y="23" width="29" height="8"/>
+                </g>
+                <g fill="#fff4b8">
+                  <rect x="304" y="12" width="18" height="18"/>
+                  <rect x="299" y="18" width="28" height="8"/>
+                  <rect x="309" y="7" width="8" height="29"/>
+                </g>
+                <g fill="#cbf8ff" opacity=".78">
+                  <rect x="0" y="67" width="46" height="3"/>
+                  <rect x="80" y="68" width="76" height="2"/>
+                  <rect x="192" y="65" width="74" height="3"/>
+                  <rect x="302" y="68" width="58" height="2"/>
+                </g>
+                <g fill="#72e7da" opacity=".55">
+                  <rect x="18" y="94" width="7" height="2"/>
+                  <rect x="52" y="118" width="10" height="2"/>
+                  <rect x="215" y="91" width="8" height="2"/>
+                  <rect x="296" y="133" width="12" height="2"/>
+                  <rect x="128" y="160" width="9" height="2"/>
+                </g>
+                <g transform="translate(135 69)">
+                  <rect x="4" y="44" width="91" height="17" fill="#06101f"/>
+                  <rect x="18" y="35" width="84" height="20" fill="#247c9c"/>
+                  <rect x="31" y="29" width="71" height="20" fill="#5cc7df"/>
+                  <rect x="69" y="21" width="28" height="15" fill="#a2f5ff"/>
+                  <rect x="97" y="33" width="24" height="10" fill="#5cc7df"/>
+                  <rect x="119" y="36" width="14" height="7" fill="#a2f5ff"/>
+                  <rect x="22" y="27" width="24" height="10" fill="#17657f"/>
+                  <rect x="12" y="16" width="22" height="15" fill="#247c9c"/>
+                  <rect x="0" y="9" width="20" height="11" fill="#5cc7df"/>
+                  <rect x="48" y="54" width="28" height="11" fill="#a2f5ff"/>
+                  <rect x="60" y="64" width="15" height="10" fill="#247c9c"/>
+                  <rect x="100" y="27" width="5" height="5" fill="#06101f"/>
+                  <rect x="101" y="27" width="1" height="1" fill="#ffffff"/>
+                  <rect x="93" y="20" width="20" height="4" fill="#cbf8ff"/>
+                </g>
+                <g fill="#d5f9ff" opacity=".7">
+                  <rect x="112" y="93" width="5" height="5"/>
+                  <rect x="105" y="108" width="4" height="4"/>
+                  <rect x="239" y="100" width="4" height="4"/>
+                  <rect x="251" y="117" width="6" height="6"/>
+                  <rect x="285" y="176" width="5" height="5"/>
+                  <rect x="299" y="160" width="3" height="3"/>
+                </g>
+                <g transform="translate(48 118)">
+                  <rect x="-8" y="-4" width="17" height="4" fill="#071326"/>
+                  <rect x="-11" y="0" width="28" height="8" fill="#ffca4f"/>
+                  <rect x="17" y="-5" width="8" height="5" fill="#d38f2f"/>
+                  <rect x="17" y="6" width="8" height="5" fill="#d38f2f"/>
+                  <rect x="-7" y="1" width="2" height="2" fill="#06101f"/>
+                </g>
+                <g transform="translate(275 142)">
+                  <rect x="-8" y="-4" width="17" height="4" fill="#071326"/>
+                  <rect x="-11" y="0" width="28" height="8" fill="#ff9ee5"/>
+                  <rect x="17" y="-5" width="8" height="5" fill="#b85c9a"/>
+                  <rect x="17" y="6" width="8" height="5" fill="#b85c9a"/>
+                  <rect x="-7" y="1" width="2" height="2" fill="#06101f"/>
+                </g>
+                <g transform="translate(0 205)">
+                  <rect width="360" height="40" fill="#6b4d34"/>
+                  <rect x="0" y="0" width="360" height="12" fill="#8b623b"/>
+                  <rect x="34" y="-26" width="4" height="34" fill="#ff6767"/>
+                  <rect x="41" y="-19" width="4" height="27" fill="#ff9a88"/>
+                  <rect x="48" y="-33" width="4" height="41" fill="#ff6767"/>
+                  <rect x="58" y="-16" width="14" height="5" fill="#7cffb2"/>
+                  <rect x="55" y="-25" width="5" height="16" fill="#46bf9e"/>
+                  <rect x="169" y="-30" width="5" height="38" fill="#ff9ee5"/>
+                  <rect x="177" y="-21" width="5" height="29" fill="#ffc4ed"/>
+                  <rect x="185" y="-35" width="5" height="43" fill="#ff9ee5"/>
+                  <rect x="245" y="-22" width="5" height="30" fill="#ffb84f"/>
+                  <rect x="253" y="-30" width="5" height="38" fill="#ffd15b"/>
+                  <rect x="263" y="-18" width="13" height="5" fill="#fff08a"/>
+                  <rect x="72" y="5" width="28" height="10" fill="#805b3b"/>
+                  <rect x="206" y="2" width="36" height="12" fill="#553b30"/>
+                  <rect x="295" y="6" width="29" height="9" fill="#805b3b"/>
+                </g>
+              </svg>
+            </span>
+            <span class="title-strip">
+              <strong class="game-title">Dolphin Jump</strong>
+              <span class="game-meta">Pixel ocean <span class="seal">WG</span></span>
             </span>
           </span>
         </a>
