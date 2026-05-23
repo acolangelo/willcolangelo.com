@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Giant Squid Escape</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="game-shell" aria-label="Giant Squid Escape game">
+      <canvas id="gameCanvas" aria-label="Giant Squid Escape play area"></canvas>
+
+      <section class="hud" aria-live="polite">
+        <div>
+          <p class="eyebrow">Giant Squid Escape</p>
+          <h1>Reef Hunt</h1>
+        </div>
+        <div class="stats" aria-label="Game score">
+          <span>Score <strong id="score">0</strong></span>
+          <span>Animals <strong id="animalCount">12</strong></span>
+        </div>
+      </section>
+
+      <button class="pause-button" id="pauseButton" type="button" aria-pressed="false">
+        Pause
+      </button>
+    </main>
+
+    <script src="game.js" defer></script>
+  </body>
+</html>

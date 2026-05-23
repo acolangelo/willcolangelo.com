@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Submarine Dives</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="game-shell" aria-label="Submarine Dives">
+      <section class="stage" aria-label="Game stage">
+        <div class="hud" aria-live="polite">
+          <div class="brand">Submarine Dives</div>
+          <div class="meters">
+            <span id="depthMeter">0 m</span>
+            <span id="hullMeter">Hull 100%</span>
+            <span id="fishMeter">Fish 8</span>
+          </div>
+        </div>
+
+        <canvas id="game" width="320" height="180" tabindex="0" aria-label="Playable pixel submarine game"></canvas>
+
+        <div class="notice" id="notice" hidden>
+          <div id="noticeTitle">Submarine Dives</div>
+          <button id="restartButton" type="button">Start</button>
+        </div>
+      </section>
+
+      <nav class="touch-controls" aria-label="Touch controls">
+        <div class="pad">
+          <button class="control left" type="button" data-control="left" aria-label="Left">&lt;</button>
+          <button class="control up" type="button" data-control="up" aria-label="Up">^</button>
+          <button class="control down" type="button" data-control="down" aria-label="Down">v</button>
+          <button class="control right" type="button" data-control="right" aria-label="Right">&gt;</button>
+        </div>
+        <div class="action-buttons">
+          <button class="control ballast" type="button" data-control="boost" aria-label="Ballast boost">^</button>
+          <button class="control claw-control" type="button" data-control="claw" aria-label="Claw">B</button>
+        </div>
+      </nav>
+    </main>
+
+    <script src="game.js"></script>
+  </body>
+</html>
