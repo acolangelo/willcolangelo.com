@@ -1,0 +1,2068 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trains with Unusual Details!</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(9, 17, 31, 0.78);
+      --panel-strong: rgba(9, 17, 31, 0.92);
+      --ink: #f6fbff;
+      --muted: #b9c7d8;
+      --accent: #ffcf4a;
+      --line: rgba(255, 255, 255, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #08111f;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #game {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+      touch-action: none;
+      background: #8fcde9;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 0 0 auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px;
+      pointer-events: none;
+    }
+
+    .title,
+    .readout {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
+      backdrop-filter: blur(14px);
+    }
+
+    .title {
+      min-width: min(380px, calc(100vw - 28px));
+      padding: 12px 14px;
+      border-radius: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1rem, 2.3vw, 1.55rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .key {
+      min-width: 28px;
+      padding: 3px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-bottom-color: rgba(0, 0, 0, 0.34);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      text-align: center;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .readout {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(78px, auto));
+      gap: 1px;
+      overflow: hidden;
+      border-radius: 8px;
+      background: var(--panel-strong);
+    }
+
+    .tile {
+      min-width: 82px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .value {
+      display: block;
+      max-width: 170px;
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--ink);
+      font-size: 0.9rem;
+      font-weight: 850;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .brake-on {
+      color: #ff817a;
+    }
+
+    @media (max-width: 760px) {
+      .hud {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .title {
+        min-width: 0;
+      }
+
+      .readout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .tile {
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="Trains with Unusual Details game canvas"></canvas>
+  <div class="hud" aria-live="polite">
+    <section class="title">
+      <h1>Trains with Unusual Details!</h1>
+      <div class="subline" aria-hidden="true">
+        <span class="key">Arrows</span>
+        <span class="key">F</span>
+        <span class="key">M</span>
+        <span class="key">Mouse</span>
+      </div>
+    </section>
+    <section class="readout">
+      <div class="tile">
+        <span class="label">Speed</span>
+        <span class="value" id="speedReadout">0</span>
+      </div>
+      <div class="tile">
+        <span class="label">Brake</span>
+        <span class="value" id="brakeReadout">Off</span>
+      </div>
+      <div class="tile">
+        <span class="label">Tool</span>
+        <span class="value" id="toolReadout">None</span>
+      </div>
+      <div class="tile">
+        <span class="label">Load</span>
+        <span class="value" id="loadReadout">Empty</span>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const speedReadout = document.getElementById("speedReadout");
+      const brakeReadout = document.getElementById("brakeReadout");
+      const toolReadout = document.getElementById("toolReadout");
+      const loadReadout = document.getElementById("loadReadout");
+
+      const VIEW = { width: 1280, height: 720 };
+      const WORLD = { width: 2600, height: 900 };
+      const lanes = [500, 585, 670];
+      const camera = { x: 0, y: 60 };
+      const pointer = { x: 0, y: 0, down: false, activeId: null };
+      const keys = new Set();
+
+      let cssWidth = 0;
+      let cssHeight = 0;
+      let dpr = 1;
+      let fitScale = 1;
+      let fitX = 0;
+      let fitY = 0;
+      let selected = null;
+      let lastTime = performance.now();
+      let pulse = 0;
+
+      const train = {
+        x: 700,
+        y: lanes[1],
+        length: 1085,
+        speed: 95,
+        cruiseDirection: 1,
+        lane: 1,
+        brake: false,
+        whistle: 0
+      };
+
+      const bayTypes = [
+        "crane", "crane", "crane", "crane",
+        "scoop", "scoop", "scoop", "scoop", "scoop",
+        "drill", "drill", "drill", "drill", "drill", "drill", "drill"
+      ];
+
+      const bayColors = {
+        crane: "#ff8f56",
+        scoop: "#55d391",
+        drill: "#74a7ff"
+      };
+
+      const bayStart = 240;
+      const bayGap = 52;
+      const bays = bayTypes.map((type, index) => ({
+        index,
+        type,
+        localX: bayStart + index * bayGap,
+        localY: -128
+      }));
+
+      const craneVariants = [
+        { name: "Red Hook Crane", color: "#f05b4f", accent: "#ffd84f", hookOffset: 29 },
+        { name: "Gantry Crane", color: "#57b7ff", accent: "#f7fbff", hookOffset: 5 },
+        { name: "Magnet Crane", color: "#a171ff", accent: "#96ffcf", hookOffset: 24 },
+        { name: "Tiny Tower Crane", color: "#28bf7b", accent: "#ffe071", hookOffset: -18 }
+      ];
+
+      const scoopVariants = [
+        { name: "Sand Scooper", color: "#f0b85a", material: "Sand", materialColor: "#e8bd69" },
+        { name: "Coal Scooper", color: "#4c5b65", material: "Coal", materialColor: "#252b31" },
+        { name: "Gravel Scooper", color: "#8ca1aa", material: "Gravel", materialColor: "#8f9da4" },
+        { name: "Snow Scooper", color: "#d9f4ff", material: "Snow", materialColor: "#eefbff" },
+        { name: "Crystal Scooper", color: "#65d6c9", material: "Crystal", materialColor: "#61e6d3" }
+      ];
+
+      const drillVariants = [
+        { name: "Corkscrew Drill", color: "#eb6f92", bit: "#f7d45e" },
+        { name: "Diamond Drill", color: "#76d1ff", bit: "#eaffff" },
+        { name: "Tunnel Borer", color: "#ffb457", bit: "#7f8791" },
+        { name: "Hammer Drill", color: "#96a3b6", bit: "#f0714c" },
+        { name: "Laser Drill", color: "#e753ff", bit: "#ff6bf7" },
+        { name: "Spiral Drill", color: "#4fd19f", bit: "#d6fff1" },
+        { name: "Mini Star Drill", color: "#ffe268", bit: "#b8c8ff" }
+      ];
+
+      const details = [];
+      const cargo = [];
+      const particles = [];
+
+      const materialPiles = [
+        { name: "Sand", color: "#e8bd69", x: 830, y: 760, amount: 1 },
+        { name: "Coal", color: "#252b31", x: 930, y: 765, amount: 1 },
+        { name: "Gravel", color: "#8f9da4", x: 1030, y: 762, amount: 1 },
+        { name: "Snow", color: "#eefbff", x: 1130, y: 758, amount: 1 },
+        { name: "Crystal", color: "#61e6d3", x: 1230, y: 762, amount: 1 }
+      ];
+
+      const drillTargets = [
+        { name: "Slate", color: "#6b7a86", x: 1495, y: 276, health: 100, maxHealth: 100 },
+        { name: "Basalt", color: "#4b525d", x: 1608, y: 264, health: 100, maxHealth: 100 },
+        { name: "Copper", color: "#b76f43", x: 1722, y: 286, health: 100, maxHealth: 100 },
+        { name: "Quartz", color: "#c4eef7", x: 1836, y: 270, health: 100, maxHealth: 100 },
+        { name: "Granite", color: "#9c8d87", x: 1950, y: 283, health: 100, maxHealth: 100 },
+        { name: "Glow Ore", color: "#7bdcaa", x: 2064, y: 266, health: 100, maxHealth: 100 },
+        { name: "Iron", color: "#8791a0", x: 2178, y: 278, health: 100, maxHealth: 100 }
+      ];
+
+      const people = [
+        { x: 185, y: 646, shirt: "#f05b4f", pants: "#24445c", hat: "#ffcf4a", phase: 0 },
+        { x: 455, y: 642, shirt: "#57b7ff", pants: "#2e3a49", hat: "#f6fbff", phase: 1.4 },
+        { x: 705, y: 736, shirt: "#28bf7b", pants: "#3c5069", hat: "#ffe071", phase: 2.2 },
+        { x: 1385, y: 648, shirt: "#a171ff", pants: "#213044", hat: "#f7fbff", phase: 3.1 },
+        { x: 2265, y: 646, shirt: "#ff8f56", pants: "#31506a", hat: "#f6fbff", phase: 4.2 }
+      ];
+
+      const cows = [
+        { x: 325, y: 636, scale: 1, spots: "#2f3742" },
+        { x: 1295, y: 736, scale: 0.9, spots: "#7a4c36" },
+        { x: 2375, y: 640, scale: 0.92, spots: "#2f3742" }
+      ];
+
+      const cats = [
+        { x: 610, y: 659, color: "#f2a65a", phase: 0.2 },
+        { x: 1185, y: 642, color: "#3b4654", phase: 1.8 },
+        { x: 2055, y: 739, color: "#f6fbff", phase: 3.4 }
+      ];
+
+      const dragons = [
+        { x: 420, y: 118, scale: 0.82, color: "#5fbf8f", wing: "#9be7c2", phase: 0.4 },
+        { x: 1410, y: 88, scale: 0.74, color: "#c06ee8", wing: "#f3b6ff", phase: 2.1 },
+        { x: 2215, y: 122, scale: 0.9, color: "#4f9dd9", wing: "#a9defa", phase: 4.5 }
+      ];
+
+      const flowers = [
+        { x: 120, y: 681, color: "#ffcf4a" }, { x: 245, y: 678, color: "#f05b4f" },
+        { x: 510, y: 681, color: "#a171ff" }, { x: 655, y: 676, color: "#57b7ff" },
+        { x: 1260, y: 681, color: "#ff8f56" }, { x: 1515, y: 674, color: "#f05b4f" },
+        { x: 1890, y: 681, color: "#55d391" }, { x: 2150, y: 676, color: "#ffcf4a" },
+        { x: 2460, y: 681, color: "#a171ff" }
+      ];
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const lerp = (a, b, amount) => a + (b - a) * amount;
+      const distance = (a, b, c, d) => Math.hypot(a - c, b - d);
+
+      function resize() {
+        dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        cssWidth = window.innerWidth;
+        cssHeight = window.innerHeight;
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        canvas.style.width = `${cssWidth}px`;
+        canvas.style.height = `${cssHeight}px`;
+        fitScale = Math.min(cssWidth / VIEW.width, cssHeight / VIEW.height);
+        fitX = (cssWidth - VIEW.width * fitScale) * 0.5;
+        fitY = (cssHeight - VIEW.height * fitScale) * 0.5;
+      }
+
+      function bayWorld(index) {
+        const bay = bays[index];
+        return {
+          x: train.x + bay.localX,
+          y: train.y + bay.localY
+        };
+      }
+
+      function makeDetails() {
+        craneVariants.forEach((variant, index) => {
+          details.push({
+            id: `crane-${index}`,
+            type: "crane",
+            bay: index,
+            name: variant.name,
+            color: variant.color,
+            accent: variant.accent,
+            hookOffset: variant.hookOffset,
+            mounted: true,
+            dragging: false,
+            carrying: null,
+            target: null,
+            action: false,
+            x: 0,
+            y: 0
+          });
+        });
+
+        scoopVariants.forEach((variant, index) => {
+          details.push({
+            id: `scoop-${index}`,
+            type: "scoop",
+            bay: index + 4,
+            name: variant.name,
+            color: variant.color,
+            material: variant.material,
+            materialColor: variant.materialColor,
+            mounted: true,
+            dragging: false,
+            load: null,
+            target: null,
+            action: false,
+            x: 0,
+            y: 0
+          });
+        });
+
+        drillVariants.forEach((variant, index) => {
+          details.push({
+            id: `drill-${index}`,
+            type: "drill",
+            bay: index + 9,
+            name: variant.name,
+            color: variant.color,
+            bit: variant.bit,
+            mounted: true,
+            dragging: false,
+            target: null,
+            action: false,
+            drillPhase: Math.random() * Math.PI * 2,
+            x: 0,
+            y: 0
+          });
+        });
+      }
+
+      function makeCargo() {
+        const base = [
+          ["beam", 352, 300, 70, 18, "#ffcf4a"],
+          ["crate", 438, 284, 42, 42, "#c78345"],
+          ["tank", 520, 292, 58, 34, "#69c1ff"],
+          ["pipe", 610, 302, 72, 16, "#aeb8c4"],
+          ["safe", 720, 288, 46, 46, "#5e6a77"],
+          ["barrel", 790, 296, 34, 46, "#ee6262"]
+        ];
+        base.forEach((item, index) => {
+          cargo.push({
+            id: `cargo-${index}`,
+            kind: item[0],
+            x: item[1],
+            y: item[2],
+            width: item[3],
+            height: item[4],
+            color: item[5],
+            health: 100,
+            maxHealth: 100,
+            carriedBy: null,
+            vx: 0,
+            vy: 0
+          });
+        });
+      }
+
+      function updateMountedDetails() {
+        details.forEach((item) => {
+          if (!item.mounted) return;
+          const home = bayWorld(item.bay);
+          item.x = home.x;
+          item.y = home.y;
+        });
+      }
+
+      function screenToWorld(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const viewX = (clientX - rect.left - fitX) / fitScale;
+        const viewY = (clientY - rect.top - fitY) / fitScale;
+        return {
+          x: viewX + camera.x,
+          y: viewY + camera.y
+        };
+      }
+
+      function objectRadius(item) {
+        if (item.type === "crane") return 48;
+        if (item.type === "scoop") return 42;
+        return 40;
+      }
+
+      function hitDetail(item, x, y) {
+        if (distance(x, y, item.x, item.y) <= objectRadius(item)) return true;
+        if (item.type === "crane") {
+          return x >= item.x - 62 && x <= item.x + 96 && y >= item.y - 90 && y <= item.y + 104;
+        }
+        if (item.type === "scoop") {
+          return x >= item.x - 58 && x <= item.x + 84 && y >= item.y - 24 && y <= item.y + 92;
+        }
+        return x >= item.x - 60 && x <= item.x + 60 && y >= item.y - 24 && y <= item.y + 98;
+      }
+
+      function objectAt(x, y) {
+        for (let i = details.length - 1; i >= 0; i -= 1) {
+          const item = details[i];
+          if (hitDetail(item, x, y)) {
+            return item;
+          }
+        }
+        return null;
+      }
+
+      function parkedToolAt(x, y) {
+        const relX = x - train.x;
+        const relY = y - train.y;
+        let best = null;
+        let bestDistance = Infinity;
+
+        details.forEach((item) => {
+          if (!item.mounted) return;
+          const bay = bays[item.bay];
+          const reachX = item.type === "crane" ? 125 : 82;
+          const topY = item.type === "crane" ? -290 : -205;
+          const bottomY = item.type === "crane" ? 4 : 20;
+          const d = Math.abs(relX - bay.localX);
+          if (d <= reachX && relY >= topY && relY <= bottomY && d < bestDistance) {
+            best = item;
+            bestDistance = d;
+          }
+        });
+
+        if (!best && relY >= -300 && relY <= 12) {
+          details.forEach((item) => {
+            if (!item.mounted || item.type !== "crane") return;
+            const bay = bays[item.bay];
+            if (relX < bayStart - 130 || relX > bayStart + bayGap * 3 + 145) return;
+            const d = Math.abs(relX - bay.localX);
+            if (d < bestDistance) {
+              best = item;
+              bestDistance = d;
+            }
+          });
+        }
+
+        return best;
+      }
+
+      function cargoAt(x, y) {
+        for (let i = cargo.length - 1; i >= 0; i -= 1) {
+          const item = cargo[i];
+          if (item.carriedBy) continue;
+          const pad = 16;
+          if (
+            x >= item.x - item.width * 0.5 - pad &&
+            x <= item.x + item.width * 0.5 + pad &&
+            y >= item.y - item.height * 0.5 - pad &&
+            y <= item.y + item.height * 0.5 + pad
+          ) {
+            return item;
+          }
+        }
+        return null;
+      }
+
+      function materialAt(x, y) {
+        let best = null;
+        let bestDistance = 68;
+        materialPiles.forEach((pile) => {
+          if (pile.amount <= 0) return;
+          const d = distance(x, y, pile.x, pile.y);
+          if (d < bestDistance) {
+            best = pile;
+            bestDistance = d;
+          }
+        });
+        return best;
+      }
+
+      function drillRockAt(x, y) {
+        let best = null;
+        let bestDistance = 70;
+        drillTargets.forEach((target) => {
+          const d = distance(x, y, target.x, target.y);
+          if (d < bestDistance) {
+            best = target;
+            bestDistance = d;
+          }
+        });
+        return best;
+      }
+
+      function targetAt(x, y) {
+        const cargoItem = cargoAt(x, y);
+        if (cargoItem) return { type: "cargo", item: cargoItem };
+        const pile = materialAt(x, y);
+        if (pile) return { type: "material", item: pile };
+        const rock = drillRockAt(x, y);
+        if (rock) return { type: "rock", item: rock };
+        return null;
+      }
+
+      function targetExists(ref) {
+        if (!ref || !ref.item) return false;
+        if (ref.type === "cargo") return cargo.includes(ref.item) && !ref.item.carriedBy;
+        if (ref.type === "material") return materialPiles.includes(ref.item) && ref.item.amount > 0;
+        if (ref.type === "rock") return drillTargets.includes(ref.item);
+        return false;
+      }
+
+      function targetInfo(ref) {
+        if (!targetExists(ref)) return null;
+        if (ref.type === "cargo") {
+          return {
+            x: ref.item.x,
+            y: ref.item.y,
+            radius: Math.max(ref.item.width, ref.item.height) * 0.55,
+            color: ref.item.color,
+            label: ref.item.kind
+          };
+        }
+        if (ref.type === "material") {
+          return {
+            x: ref.item.x,
+            y: ref.item.y,
+            radius: 56,
+            color: ref.item.color,
+            label: ref.item.name
+          };
+        }
+        return {
+          x: ref.item.x,
+          y: ref.item.y,
+          radius: 60,
+          color: ref.item.color,
+          label: ref.item.name
+        };
+      }
+
+      function setToolTarget(item, ref) {
+        if (!ref) {
+          item.target = null;
+          return;
+        }
+        item.target = ref;
+        const info = targetInfo(ref);
+        if (!info) return;
+        if (item.type === "crane") {
+          item.x = info.x - item.hookOffset;
+          item.y = info.y - 68;
+        } else if (item.type === "scoop") {
+          item.x = info.x - 35;
+          item.y = info.y - 72;
+        } else if (item.type === "drill") {
+          item.x = info.x;
+          item.y = info.y - 52;
+        }
+      }
+
+      function nearestChoppableTarget(x, y) {
+        let best = null;
+        let bestDistance = 145;
+        const candidates = [];
+        cargo.forEach((item) => {
+          if (!item.carriedBy) candidates.push({ type: "cargo", item });
+        });
+        materialPiles.forEach((item) => {
+          if (item.amount > 0) candidates.push({ type: "material", item });
+        });
+        drillTargets.forEach((item) => candidates.push({ type: "rock", item }));
+
+        candidates.forEach((ref) => {
+          const info = targetInfo(ref);
+          if (!info) return;
+          const d = distance(x, y, info.x, info.y);
+          if (d < bestDistance) {
+            best = ref;
+            bestDistance = d;
+          }
+        });
+        return best;
+      }
+
+      function snapIfHome(item) {
+        const home = bayWorld(item.bay);
+        if (distance(item.x, item.y, home.x, home.y) < 64) {
+          item.mounted = true;
+          item.dragging = false;
+          item.x = home.x;
+          item.y = home.y;
+          item.action = false;
+          item.target = null;
+          return true;
+        }
+        return false;
+      }
+
+      function parkToolInBay(item) {
+        if (!item) return;
+        if (item.type === "crane" && item.carrying) {
+          const hook = craneHook(item);
+          item.carrying.carriedBy = null;
+          item.carrying.x = hook.x;
+          item.carrying.y = hook.y + 20;
+          item.carrying.vx = train.speed * 0.2;
+          item.carrying.vy = 0;
+          item.carrying = null;
+        }
+
+        const home = bayWorld(item.bay);
+        item.mounted = true;
+        item.dragging = false;
+        item.action = false;
+        item.target = null;
+        item.x = home.x;
+        item.y = home.y;
+      }
+
+      function releaseTool(item) {
+        item.mounted = false;
+        item.dragging = true;
+        item.action = false;
+        item.target = null;
+      }
+
+      function selectTool(item, point) {
+        if (selected && selected !== item && !selected.mounted) {
+          parkToolInBay(selected);
+        }
+        selected = item;
+        releaseTool(item);
+        item.x = point.x;
+        item.y = point.y;
+      }
+
+      function pointerDown(event) {
+        event.preventDefault();
+        const point = screenToWorld(event.clientX, event.clientY);
+        pointer.x = point.x;
+        pointer.y = point.y;
+        pointer.down = true;
+        pointer.activeId = event.pointerId;
+        canvas.setPointerCapture(event.pointerId);
+        const parkedItem = parkedToolAt(point.x, point.y);
+        const item = parkedItem && parkedItem !== selected
+          ? parkedItem
+          : objectAt(point.x, point.y) || parkedItem;
+        if (item) {
+          selectTool(item, point);
+          return;
+        }
+
+        if (selected && !selected.mounted) {
+          const home = bayWorld(selected.bay);
+          if (distance(point.x, point.y, home.x, home.y + 34) < 58) {
+            snapIfHome(selected);
+            return;
+          }
+
+          const clickedTarget = targetAt(point.x, point.y);
+          if (clickedTarget) {
+            selected.dragging = true;
+            setToolTarget(selected, clickedTarget);
+          } else {
+            selected.dragging = true;
+            selected.target = null;
+            selected.x = clamp(point.x, 30, WORLD.width - 30);
+            selected.y = clamp(point.y, 160, WORLD.height - 60);
+          }
+        } else {
+          selected = null;
+        }
+      }
+
+      function pointerMove(event) {
+        const point = screenToWorld(event.clientX, event.clientY);
+        pointer.x = point.x;
+        pointer.y = point.y;
+        if (selected && selected.dragging) {
+          selected.x = clamp(point.x, 30, WORLD.width - 30);
+          selected.y = clamp(point.y, 160, WORLD.height - 60);
+        }
+      }
+
+      function pointerUp(event) {
+        const point = screenToWorld(event.clientX, event.clientY);
+        pointer.x = point.x;
+        pointer.y = point.y;
+        pointer.down = false;
+        pointer.activeId = null;
+      }
+
+      function nearestCargo(hookX, hookY) {
+        let best = null;
+        let bestDistance = 96;
+        cargo.forEach((item) => {
+          if (item.carriedBy) return;
+          const d = distance(hookX, hookY, item.x, item.y);
+          if (d < bestDistance) {
+            best = item;
+            bestDistance = d;
+          }
+        });
+        return best;
+      }
+
+      function nearestMaterial(x, y, materialName) {
+        let best = null;
+        let bestDistance = 118;
+        materialPiles.forEach((pile) => {
+          if (pile.amount <= 0) return;
+          if (materialName && pile.name !== materialName) return;
+          const d = distance(x, y, pile.x, pile.y);
+          if (d < bestDistance) {
+            best = pile;
+            bestDistance = d;
+          }
+        });
+        return best;
+      }
+
+      function nearestDrillTarget(x, y) {
+        let best = null;
+        let bestDistance = 126;
+        drillTargets.forEach((target) => {
+          if (target.health <= 0) return;
+          const d = distance(x, y, target.x, target.y);
+          if (d < bestDistance) {
+            best = target;
+            bestDistance = d;
+          }
+        });
+        return best;
+      }
+
+      function craneHook(item) {
+        const bob = item.action ? Math.sin(pulse * 5) * 3 : 0;
+        return {
+          x: item.x + item.hookOffset,
+          y: item.y + 43 + bob
+        };
+      }
+
+      function toggleCrane(item) {
+        const hook = craneHook(item);
+        if (item.carrying) {
+          item.carrying.carriedBy = null;
+          item.carrying.x = hook.x;
+          item.carrying.y = hook.y + 20;
+          item.carrying.vx = train.speed * 0.2;
+          item.carrying.vy = 0;
+          item.carrying = null;
+          item.action = false;
+          return;
+        }
+
+        const targeted = item.target && item.target.type === "cargo" && targetExists(item.target)
+          ? item.target.item
+          : null;
+        const found = targeted || nearestCargo(hook.x, hook.y);
+        if (found) {
+          found.carriedBy = item.id;
+          item.carrying = found;
+          item.action = true;
+        } else {
+          item.action = !item.action;
+        }
+      }
+
+      function toggleScoop(item) {
+        if (item.load) {
+          cargo.push({
+            id: `material-drop-${Date.now()}`,
+            kind: "pile",
+            x: item.x + 17,
+            y: item.y + 42,
+            width: 46,
+            height: 24,
+            color: item.load.color,
+            health: 70,
+            maxHealth: 70,
+            carriedBy: null,
+            vx: 0,
+            vy: 0
+          });
+          item.load = null;
+          item.action = false;
+          return;
+        }
+
+        const pile = item.target && item.target.type === "material" && targetExists(item.target)
+          ? item.target.item
+          : nearestMaterial(item.x, item.y + 42, item.material);
+        if (pile) {
+          pile.amount = Math.max(0, pile.amount - 0.28);
+          item.load = { name: pile.name, color: pile.color };
+          item.action = true;
+        } else {
+          item.action = !item.action;
+        }
+      }
+
+      function toggleDrill(item) {
+        if (item.action) {
+          item.action = false;
+          item.target = null;
+          return;
+        }
+
+        item.target = targetExists(item.target)
+          ? item.target
+          : nearestChoppableTarget(item.x, item.y + 42);
+        item.action = true;
+      }
+
+      function useSelectedTool() {
+        if (!selected) return;
+        if (selected.type === "crane") toggleCrane(selected);
+        if (selected.type === "scoop") toggleScoop(selected);
+        if (selected.type === "drill") toggleDrill(selected);
+      }
+
+      function keyDown(event) {
+        const key = event.key;
+        if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "f", "F", "m", "M"].includes(key)) {
+          event.preventDefault();
+        }
+
+        if (key.startsWith("Arrow") && !event.repeat && selected && !selected.mounted) {
+          parkToolInBay(selected);
+        }
+
+        if (key === "ArrowUp" && !event.repeat) {
+          train.lane = clamp(train.lane - 1, 0, lanes.length - 1);
+        } else if (key === "ArrowDown" && !event.repeat) {
+          train.lane = clamp(train.lane + 1, 0, lanes.length - 1);
+        } else if ((key === "m" || key === "M") && !event.repeat) {
+          train.brake = !train.brake;
+          if (train.brake) train.speed = 0;
+        } else if ((key === "f" || key === "F") && !event.repeat) {
+          useSelectedTool();
+        }
+
+        keys.add(key);
+      }
+
+      function keyUp(event) {
+        keys.delete(event.key);
+      }
+
+      function spawnParticle(x, y, color, count = 1) {
+        for (let i = 0; i < count; i += 1) {
+          particles.push({
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 95,
+            vy: -Math.random() * 90 - 10,
+            life: 0.45 + Math.random() * 0.35,
+            maxLife: 0.8,
+            size: 2 + Math.random() * 3,
+            color
+          });
+        }
+      }
+
+      function spawnChopParticles(x, y, color, count = 4) {
+        for (let i = 0; i < count; i += 1) {
+          particles.push({
+            x: x + (Math.random() - 0.5) * 16,
+            y: y + (Math.random() - 0.5) * 14,
+            vx: (Math.random() - 0.5) * 190,
+            vy: -Math.random() * 125 - 18,
+            life: 0.42 + Math.random() * 0.28,
+            maxLife: 0.7,
+            size: 1 + Math.random() * 2.5,
+            color
+          });
+        }
+      }
+
+      function updateTrain(dt) {
+        if (!train.brake) {
+          if (keys.has("ArrowRight")) {
+            train.speed += 145 * dt;
+            train.cruiseDirection = 1;
+          }
+          if (keys.has("ArrowLeft")) {
+            train.speed -= 145 * dt;
+            train.cruiseDirection = -1;
+          }
+          if (Math.abs(train.speed) < 70) {
+            train.speed = train.cruiseDirection * 70;
+          }
+          train.speed = clamp(train.speed, -185, 205);
+        } else {
+          train.speed = 0;
+        }
+
+        train.x += train.speed * dt;
+        if (train.x < 95) {
+          train.x = 95;
+          train.cruiseDirection = 1;
+          train.speed = train.brake ? 0 : 82;
+        }
+        if (train.x > WORLD.width - train.length - 95) {
+          train.x = WORLD.width - train.length - 95;
+          train.cruiseDirection = -1;
+          train.speed = train.brake ? 0 : -82;
+        }
+
+        train.y = lerp(train.y, lanes[train.lane], 1 - Math.pow(0.001, dt));
+        train.whistle = Math.max(0, train.whistle - dt);
+      }
+
+      function updateCargo(dt) {
+        cargo.forEach((item) => {
+          if (item.carriedBy) {
+            const holder = details.find((detail) => detail.id === item.carriedBy);
+            if (holder && holder.type === "crane") {
+              const hook = craneHook(holder);
+              item.x = hook.x;
+              item.y = hook.y + 24;
+            } else if (!holder) {
+              item.carriedBy = null;
+            }
+            return;
+          }
+
+          item.x += item.vx * dt;
+          item.y += item.vy * dt;
+          item.vx *= Math.pow(0.3, dt);
+          item.vy += 180 * dt;
+          const floor = 805 - Math.sin(item.x * 0.01) * 8;
+          if (item.y + item.height * 0.5 > floor) {
+            item.y = floor - item.height * 0.5;
+            item.vy = 0;
+            item.vx *= Math.pow(0.08, dt);
+          }
+        });
+      }
+
+      function updateDrills(dt) {
+        details.forEach((item) => {
+          if (item.type !== "drill") return;
+          item.drillPhase += dt * (item.action ? 52 : 3);
+          if (!item.action) return;
+
+          const bitX = item.x;
+          const bitY = item.y + 48;
+          const target = targetExists(item.target) ? item.target : nearestChoppableTarget(bitX, bitY);
+          const info = targetInfo(target);
+          if (info && distance(bitX, bitY, info.x, info.y) < Math.max(132, info.radius + 82)) {
+            item.target = target;
+            spawnChopParticles(bitX, bitY + 5, info.color, 4);
+            spawnChopParticles(bitX, bitY + 5, "#b9bec4", 2);
+
+            if (target.type === "cargo") {
+              const chopped = target.item;
+              chopped.health = Math.max(0, (chopped.health ?? chopped.maxHealth ?? 100) - 58 * dt);
+              chopped.vx += (Math.random() - 0.5) * 16;
+              chopped.vy -= Math.random() * 10;
+              if (chopped.health <= 0) {
+                const oldX = chopped.x;
+                const oldY = chopped.y;
+                const oldColor = chopped.color;
+                const index = cargo.indexOf(chopped);
+                if (index >= 0) cargo.splice(index, 1);
+                for (let i = 0; i < 8; i += 1) {
+                  cargo.push({
+                    id: `chopped-${Date.now()}-${i}-${Math.random()}`,
+                    kind: "piece",
+                    x: oldX + (Math.random() - 0.5) * 34,
+                    y: oldY + (Math.random() - 0.5) * 26,
+                    width: 10 + Math.random() * 14,
+                    height: 7 + Math.random() * 10,
+                    color: i % 3 === 0 ? "#aeb4bc" : oldColor,
+                    health: 30,
+                    maxHealth: 30,
+                    carriedBy: null,
+                    vx: (Math.random() - 0.5) * 115,
+                    vy: -70 - Math.random() * 70
+                  });
+                }
+                item.action = false;
+                item.target = null;
+              }
+            } else if (target.type === "material") {
+              target.item.amount = Math.max(0, target.item.amount - 0.55 * dt);
+              if (target.item.amount <= 0) {
+                item.action = false;
+                item.target = null;
+              }
+            } else if (target.type === "rock") {
+              target.item.health = Math.max(0, target.item.health - 42 * dt);
+              if (target.item.health === 0) {
+                const rockX = target.item.x;
+                const rockY = target.item.y;
+                const rockColor = target.item.color;
+                for (let i = 0; i < 5; i += 1) {
+                  cargo.push({
+                    id: `rock-piece-${Date.now()}-${i}-${Math.random()}`,
+                    kind: i === 0 ? "gem" : "piece",
+                    x: rockX + (Math.random() - 0.5) * 38,
+                    y: rockY + 28 + (Math.random() - 0.5) * 18,
+                    width: 12 + Math.random() * 18,
+                    height: 10 + Math.random() * 16,
+                    color: i === 0 ? item.bit : rockColor,
+                    health: 35,
+                    maxHealth: 35,
+                    carriedBy: null,
+                    vx: (Math.random() - 0.5) * 95,
+                    vy: -70 - Math.random() * 45
+                  });
+                }
+                target.item.health = target.item.maxHealth;
+                item.action = false;
+                item.target = null;
+              }
+            }
+          } else {
+            spawnParticle(bitX, bitY + 4, item.bit, Math.random() > 0.75 ? 1 : 0);
+          }
+        });
+      }
+      function updateParticles(dt) {
+        for (let i = particles.length - 1; i >= 0; i -= 1) {
+          const particle = particles[i];
+          particle.life -= dt;
+          particle.x += particle.vx * dt;
+          particle.y += particle.vy * dt;
+          particle.vy += 230 * dt;
+          if (particle.life <= 0) particles.splice(i, 1);
+        }
+      }
+
+      function updateCamera() {
+        const wantedX = train.x + train.length * 0.5 - VIEW.width * 0.5;
+        camera.x = clamp(lerp(camera.x, wantedX, 0.08), 0, WORLD.width - VIEW.width);
+        camera.y = 60;
+      }
+
+      function updateReadout() {
+        speedReadout.textContent = `${Math.round(train.speed)}`;
+        brakeReadout.textContent = train.brake ? "On" : "Off";
+        brakeReadout.classList.toggle("brake-on", train.brake);
+        toolReadout.textContent = selected ? selected.name : "None";
+
+        if (!selected) {
+          loadReadout.textContent = "Empty";
+        } else if (selected.type === "crane" && selected.carrying) {
+          loadReadout.textContent = selected.carrying.kind;
+        } else if (selected.type === "scoop" && selected.load) {
+          loadReadout.textContent = selected.load.name;
+        } else if (selected.type === "drill" && selected.action) {
+          loadReadout.textContent = "Chopping";
+        } else if (selected.target && targetInfo(selected.target)) {
+          loadReadout.textContent = targetInfo(selected.target).label;
+        } else if (selected.mounted) {
+          loadReadout.textContent = "Riding";
+        } else {
+          loadReadout.textContent = selected.action ? "Active" : "Empty";
+        }
+      }
+
+      function update(dt) {
+        pulse += dt;
+        updateTrain(dt);
+        updateMountedDetails();
+        updateCargo(dt);
+        updateDrills(dt);
+        updateParticles(dt);
+        updateCamera();
+        updateReadout();
+      }
+
+      function roundedRect(x, y, width, height, radius) {
+        const r = Math.min(radius, width * 0.5, height * 0.5);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + width - r, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+        ctx.lineTo(x + width, y + height - r);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+        ctx.lineTo(x + r, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+
+      function fillRounded(x, y, width, height, radius, color) {
+        roundedRect(x, y, width, height, radius);
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      function strokeRounded(x, y, width, height, radius, color, lineWidth = 2) {
+        roundedRect(x, y, width, height, radius);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+      }
+
+      function drawBackground() {
+        const sky = ctx.createLinearGradient(0, 0, 0, WORLD.height);
+        sky.addColorStop(0, "#8bd1f0");
+        sky.addColorStop(0.55, "#d8f0ef");
+        sky.addColorStop(1, "#98bc8f");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+
+        ctx.fillStyle = "#6ea56a";
+        ctx.fillRect(0, 690, WORLD.width, 230);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.62)";
+        drawCloud(210, 120, 1);
+        drawCloud(955, 95, 0.78);
+        drawCloud(1830, 136, 0.92);
+        drawCloud(2320, 88, 0.7);
+        drawDragons();
+
+        drawDistantHills();
+        drawWorkAreas();
+        lanes.forEach((lane, index) => drawRail(lane, index));
+        drawSceneryDetails();
+      }
+
+      function drawCloud(x, y, scale) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        ctx.beginPath();
+        ctx.ellipse(-45, 10, 44, 18, 0, 0, Math.PI * 2);
+        ctx.ellipse(-10, 0, 38, 24, 0, 0, Math.PI * 2);
+        ctx.ellipse(32, 12, 50, 20, 0, 0, Math.PI * 2);
+        ctx.ellipse(68, 16, 28, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawDragons() {
+        dragons.forEach((dragon) => {
+          const glide = Math.sin(pulse * 0.8 + dragon.phase) * 12;
+          const flap = Math.sin(pulse * 5 + dragon.phase) * 0.4;
+          ctx.save();
+          ctx.translate(dragon.x + Math.sin(pulse * 0.25 + dragon.phase) * 28, dragon.y + glide);
+          ctx.scale(dragon.scale, dragon.scale);
+          ctx.lineCap = "round";
+
+          ctx.fillStyle = dragon.wing;
+          ctx.beginPath();
+          ctx.moveTo(-18, 1);
+          ctx.lineTo(-74, -34 - flap * 24);
+          ctx.lineTo(-44, 18);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(18, 1);
+          ctx.lineTo(72, -31 + flap * 24);
+          ctx.lineTo(42, 19);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = dragon.color;
+          ctx.beginPath();
+          ctx.ellipse(0, 8, 44, 16, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(48, 2, 18, 14, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = dragon.color;
+          ctx.lineWidth = 8;
+          ctx.beginPath();
+          ctx.moveTo(-40, 10);
+          ctx.quadraticCurveTo(-76, 2, -95, 22);
+          ctx.stroke();
+
+          ctx.fillStyle = "#f6fbff";
+          ctx.beginPath();
+          ctx.arc(54, -3, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#173044";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(58, 5);
+          ctx.quadraticCurveTo(65, 11, 72, 4);
+          ctx.stroke();
+
+          ctx.fillStyle = "#ffe071";
+          ctx.beginPath();
+          ctx.moveTo(48, -14);
+          ctx.lineTo(43, -28);
+          ctx.lineTo(55, -17);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.strokeStyle = "rgba(255,255,255,0.6)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-4, -8);
+          ctx.lineTo(2, -18);
+          ctx.lineTo(8, -8);
+          ctx.moveTo(12, -6);
+          ctx.lineTo(18, -17);
+          ctx.lineTo(24, -6);
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+
+      function drawDistantHills() {
+        ctx.fillStyle = "#5b955d";
+        ctx.beginPath();
+        ctx.moveTo(0, 675);
+        for (let x = 0; x <= WORLD.width + 80; x += 80) {
+          const y = 615 + Math.sin(x * 0.009) * 30 + Math.sin(x * 0.004) * 22;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(WORLD.width, 710);
+        ctx.lineTo(0, 710);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawWorkAreas() {
+        drawSign(360, 226, "#ff8f56", "C");
+        drawSign(980, 705, "#55d391", "S");
+        drawSign(1745, 216, "#74a7ff", "D");
+
+        ctx.fillStyle = "rgba(54, 45, 38, 0.18)";
+        roundedRect(285, 260, 575, 105, 8);
+        ctx.fill();
+        strokeRounded(285, 260, 575, 105, 8, "rgba(95, 72, 43, 0.28)", 2);
+
+        materialPiles.forEach((pile) => drawMaterialPile(pile));
+        drillTargets.forEach((target) => drawDrillTarget(target));
+      }
+
+      function drawSign(x, y, color, text) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.fillStyle = "#5a422d";
+        ctx.fillRect(-4, 25, 8, 50);
+        fillRounded(-27, -8, 54, 38, 6, color);
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = "#07111d";
+        ctx.font = "900 22px Inter, system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, 0, 12);
+        ctx.restore();
+      }
+
+      function drawSceneryDetails() {
+        drawDepotDetails();
+        flowers.forEach((flower) => drawFlower(flower));
+        cows.forEach((cow) => drawCow(cow));
+        cats.forEach((cat) => drawCat(cat));
+        people.forEach((person) => drawPerson(person));
+      }
+
+      function drawDepotDetails() {
+        const crates = [
+          { x: 70, y: 682, color: "#6a7381" },
+          { x: 115, y: 679, color: "#f05b4f" },
+          { x: 680, y: 690, color: "#cf7b3d" },
+          { x: 2250, y: 690, color: "#57b7ff" }
+        ];
+
+        crates.forEach((crate) => {
+          fillRounded(crate.x - 18, crate.y - 24, 36, 36, 4, crate.color);
+          ctx.strokeStyle = "rgba(255,255,255,0.26)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(crate.x - 14, crate.y - 6);
+          ctx.lineTo(crate.x + 14, crate.y - 6);
+          ctx.moveTo(crate.x, crate.y - 21);
+          ctx.lineTo(crate.x, crate.y + 10);
+          ctx.stroke();
+        });
+
+        ctx.fillStyle = "#5a422d";
+        for (let x = 1180; x < 1320; x += 26) {
+          ctx.fillRect(x, 664 + Math.sin(x) * 3, 18, 38);
+        }
+      }
+
+      function drawFlower(flower) {
+        ctx.save();
+        ctx.translate(flower.x, flower.y);
+        ctx.strokeStyle = "#2d7c55";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 10);
+        ctx.lineTo(0, -4);
+        ctx.stroke();
+        ctx.fillStyle = flower.color;
+        for (let i = 0; i < 5; i += 1) {
+          const angle = (Math.PI * 2 * i) / 5;
+          ctx.beginPath();
+          ctx.ellipse(Math.cos(angle) * 5, -6 + Math.sin(angle) * 5, 4, 2.5, angle, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = "#ffe071";
+        ctx.beginPath();
+        ctx.arc(0, -6, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawPerson(person) {
+        const wave = Math.sin(pulse * 3 + person.phase) * 4;
+        ctx.save();
+        ctx.translate(person.x, person.y);
+        ctx.lineCap = "round";
+        ctx.strokeStyle = person.pants;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-4, 18);
+        ctx.lineTo(-8, 35);
+        ctx.moveTo(5, 18);
+        ctx.lineTo(10, 35);
+        ctx.stroke();
+
+        fillRounded(-9, -2, 18, 23, 5, person.shirt);
+        ctx.strokeStyle = person.shirt;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-9, 5);
+        ctx.lineTo(-19, 15 + wave);
+        ctx.moveTo(9, 5);
+        ctx.lineTo(20, 10 - wave);
+        ctx.stroke();
+
+        ctx.fillStyle = "#f0c39a";
+        ctx.beginPath();
+        ctx.arc(0, -12, 9, 0, Math.PI * 2);
+        ctx.fill();
+        fillRounded(-11, -23, 22, 7, 4, person.hat);
+        ctx.fillStyle = "#172230";
+        ctx.beginPath();
+        ctx.arc(-3, -13, 1.5, 0, Math.PI * 2);
+        ctx.arc(4, -13, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#172230";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-3, -8);
+        ctx.quadraticCurveTo(1, -5, 5, -8);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawCow(cow) {
+        ctx.save();
+        ctx.translate(cow.x, cow.y);
+        ctx.scale(cow.scale, cow.scale);
+        ctx.fillStyle = "rgba(9,17,31,0.18)";
+        ctx.beginPath();
+        ctx.ellipse(0, 36, 45, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#f6fbff";
+        ctx.beginPath();
+        ctx.ellipse(0, 8, 42, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(43, 1, 17, 13, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = cow.spots;
+        ctx.beginPath();
+        ctx.ellipse(-16, 2, 11, 8, 0.4, 0, Math.PI * 2);
+        ctx.ellipse(10, 12, 14, 7, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(45, -1, 6, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#283242";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-25, 24);
+        ctx.lineTo(-25, 42);
+        ctx.moveTo(-5, 25);
+        ctx.lineTo(-5, 42);
+        ctx.moveTo(18, 24);
+        ctx.lineTo(18, 42);
+        ctx.moveTo(33, 20);
+        ctx.lineTo(33, 40);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#f6fbff";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(51, -10);
+        ctx.lineTo(59, -18);
+        ctx.moveTo(37, -10);
+        ctx.lineTo(31, -18);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#172230";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-40, 4);
+        ctx.quadraticCurveTo(-58, -8, -65, 8);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawCat(cat) {
+        const tail = Math.sin(pulse * 2.4 + cat.phase) * 4;
+        ctx.save();
+        ctx.translate(cat.x, cat.y);
+        ctx.fillStyle = "rgba(9,17,31,0.15)";
+        ctx.beginPath();
+        ctx.ellipse(0, 25, 24, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = cat.color;
+        ctx.beginPath();
+        ctx.ellipse(0, 6, 20, 11, 0, 0, Math.PI * 2);
+        ctx.ellipse(18, 1, 10, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(12, -6);
+        ctx.lineTo(16, -17);
+        ctx.lineTo(21, -5);
+        ctx.moveTo(21, -5);
+        ctx.lineTo(27, -15);
+        ctx.lineTo(28, -2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = cat.color;
+        ctx.lineWidth = 5;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-17, 3);
+        ctx.quadraticCurveTo(-34, -7 - tail, -41, 9 + tail);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#172230";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-11, 15);
+        ctx.lineTo(-13, 25);
+        ctx.moveTo(7, 15);
+        ctx.lineTo(9, 25);
+        ctx.stroke();
+
+        ctx.fillStyle = "#172230";
+        ctx.beginPath();
+        ctx.arc(20, 0, 1.5, 0, Math.PI * 2);
+        ctx.arc(27, 0, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawRail(y, index) {
+        ctx.save();
+        ctx.fillStyle = index === train.lane ? "#26313f" : "#3d4651";
+        ctx.fillRect(0, y + 17, WORLD.width, 5);
+        ctx.fillRect(0, y + 40, WORLD.width, 5);
+
+        ctx.fillStyle = "#8a6b46";
+        for (let x = -30; x < WORLD.width + 80; x += 42) {
+          ctx.save();
+          ctx.translate(x, y + 29);
+          ctx.rotate(-0.08);
+          ctx.fillRect(-4, -22, 8, 50);
+          ctx.restore();
+        }
+
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillRect(0, y + 8, WORLD.width, 1);
+        ctx.restore();
+      }
+
+      function drawMaterialPile(pile) {
+        const used = 1 - pile.amount;
+        ctx.save();
+        ctx.translate(pile.x, pile.y);
+        ctx.fillStyle = "rgba(54, 45, 38, 0.22)";
+        ctx.beginPath();
+        ctx.ellipse(0, 22, 50, 13, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = pile.color;
+        ctx.beginPath();
+        ctx.moveTo(-45, 20);
+        ctx.quadraticCurveTo(-24, -28 + used * 28, 0, -35 + used * 35);
+        ctx.quadraticCurveTo(26, -24 + used * 24, 46, 20);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.18)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawDrillTarget(target) {
+        const damage = 1 - target.health / target.maxHealth;
+        ctx.save();
+        ctx.translate(target.x, target.y);
+        ctx.fillStyle = "rgba(45, 39, 42, 0.26)";
+        ctx.beginPath();
+        ctx.ellipse(0, 42, 56, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = target.color;
+        ctx.beginPath();
+        ctx.moveTo(-43, 25);
+        ctx.lineTo(-28, -22);
+        ctx.lineTo(4, -38);
+        ctx.lineTo(35, -18);
+        ctx.lineTo(45, 22);
+        ctx.lineTo(18, 38);
+        ctx.lineTo(-20, 35);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(0,0,0,0.24)";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        if (damage > 0.08) {
+          ctx.strokeStyle = "rgba(255,255,255,0.55)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-16, -10);
+          ctx.lineTo(-2, 5 + damage * 8);
+          ctx.lineTo(12, -4);
+          ctx.moveTo(4, 10);
+          ctx.lineTo(24, 22);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawTrain() {
+        ctx.save();
+        ctx.translate(train.x, train.y);
+        drawTrainShadow();
+        drawEngine();
+        drawCars();
+        drawBays();
+        drawWheels();
+        ctx.restore();
+      }
+
+      function drawTrainShadow() {
+        ctx.fillStyle = "rgba(9, 17, 31, 0.22)";
+        ctx.beginPath();
+        ctx.ellipse(train.length * 0.52, 60, train.length * 0.5, 28, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawEngine() {
+        fillRounded(24, -93, 142, 72, 8, "#1d6d96");
+        fillRounded(54, -132, 78, 54, 7, "#2699c8");
+        fillRounded(122, -110, 52, 89, 7, "#184a73");
+        fillRounded(8, -68, 36, 47, 6, "#f05b4f");
+        ctx.fillStyle = "#131d2a";
+        ctx.fillRect(142, -157, 26, 52);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.52)";
+        ctx.beginPath();
+        ctx.ellipse(154, -167 - Math.sin(pulse * 2) * 4, 22 + Math.sin(pulse * 1.5) * 4, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f6fbff";
+        ctx.fillRect(66, -122, 44, 28);
+        ctx.fillStyle = "#ffcf4a";
+        ctx.beginPath();
+        ctx.arc(19, -54, 13, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawCars() {
+        const carColors = ["#a33d5c", "#cf7b3d", "#597bbf", "#2f9a76"];
+        for (let i = 0; i < 4; i += 1) {
+          const x = 198 + i * 218;
+          fillRounded(x, -87, 204, 49, 8, carColors[i]);
+          ctx.fillStyle = "rgba(255,255,255,0.18)";
+          ctx.fillRect(x + 12, -82, 180, 7);
+          ctx.fillStyle = "#213044";
+          ctx.fillRect(x - 12, -55, 20, 14);
+          ctx.fillRect(x + 198, -55, 22, 14);
+        }
+      }
+
+      function drawBays() {
+        bays.forEach((bay) => {
+          const homeX = bay.localX;
+          const homeY = bay.localY;
+          const isSelectedHome = selected && selected.bay === bay.index;
+          const near = selected && distance(selected.x, selected.y, train.x + homeX, train.y + homeY) < 78;
+          ctx.save();
+          ctx.translate(homeX, homeY);
+          ctx.globalAlpha = isSelectedHome ? 1 : 0.82;
+          fillRounded(-22, 27, 44, 26, 5, near ? "#fff4a6" : bayColors[bay.type]);
+          ctx.strokeStyle = "rgba(9,17,31,0.45)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          drawBayIcon(bay.type);
+          ctx.restore();
+        });
+      }
+
+      function drawBayIcon(type) {
+        ctx.save();
+        ctx.translate(0, 39);
+        ctx.strokeStyle = "#07111d";
+        ctx.fillStyle = "#07111d";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+        if (type === "crane") {
+          ctx.beginPath();
+          ctx.moveTo(-8, -5);
+          ctx.lineTo(6, -5);
+          ctx.lineTo(6, 5);
+          ctx.moveTo(6, 5);
+          ctx.quadraticCurveTo(9, 10, 14, 5);
+          ctx.stroke();
+        } else if (type === "scoop") {
+          ctx.beginPath();
+          ctx.moveTo(-13, -2);
+          ctx.lineTo(3, 7);
+          ctx.lineTo(15, 0);
+          ctx.lineTo(10, 9);
+          ctx.lineTo(-1, 11);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(-10, -8);
+          ctx.lineTo(3, 11);
+          ctx.lineTo(12, -5);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawWheels() {
+        const wheelXs = [44, 96, 150, 234, 326, 452, 544, 670, 762, 888, 980];
+        wheelXs.forEach((x) => {
+          ctx.fillStyle = "#172230";
+          ctx.beginPath();
+          ctx.arc(x, -18, 22, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#8aa2b8";
+          ctx.beginPath();
+          ctx.arc(x, -18, 10, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      function drawCargoItem(item) {
+        if (item.carriedBy && !details.some((detail) => detail.id === item.carriedBy)) return;
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        const damage = item.maxHealth ? 1 - clamp(item.health / item.maxHealth, 0, 1) : 0;
+        const chipScale = 1 - damage * 0.18;
+        ctx.scale(chipScale, chipScale);
+        ctx.fillStyle = "rgba(9,17,31,0.2)";
+        ctx.beginPath();
+        ctx.ellipse(0, item.height * 0.5 + 8, item.width * 0.5, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (item.kind === "pipe") {
+          ctx.fillStyle = item.color;
+          fillRounded(-item.width * 0.5, -item.height * 0.5, item.width, item.height, 8, item.color);
+          ctx.fillStyle = "rgba(255,255,255,0.45)";
+          ctx.fillRect(-item.width * 0.35, -item.height * 0.25, item.width * 0.58, 3);
+        } else if (item.kind === "pile") {
+          ctx.fillStyle = item.color;
+          ctx.beginPath();
+          ctx.moveTo(-item.width * 0.5, item.height * 0.35);
+          ctx.quadraticCurveTo(-8, -item.height * 0.55, item.width * 0.5, item.height * 0.35);
+          ctx.closePath();
+          ctx.fill();
+        } else if (item.kind === "gem") {
+          ctx.fillStyle = item.color;
+          ctx.beginPath();
+          ctx.moveTo(0, -item.height * 0.55);
+          ctx.lineTo(item.width * 0.45, -4);
+          ctx.lineTo(item.width * 0.24, item.height * 0.5);
+          ctx.lineTo(-item.width * 0.26, item.height * 0.5);
+          ctx.lineTo(-item.width * 0.45, -4);
+          ctx.closePath();
+          ctx.fill();
+        } else if (item.kind === "piece") {
+          ctx.fillStyle = item.color;
+          ctx.beginPath();
+          ctx.moveTo(-item.width * 0.5, -item.height * 0.15);
+          ctx.lineTo(-item.width * 0.12, -item.height * 0.5);
+          ctx.lineTo(item.width * 0.5, -item.height * 0.08);
+          ctx.lineTo(item.width * 0.24, item.height * 0.5);
+          ctx.lineTo(-item.width * 0.45, item.height * 0.32);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          fillRounded(-item.width * 0.5, -item.height * 0.5, item.width, item.height, 5, item.color);
+          ctx.strokeStyle = "rgba(0,0,0,0.22)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.strokeStyle = "rgba(255,255,255,0.28)";
+          ctx.beginPath();
+          ctx.moveTo(-item.width * 0.42, 0);
+          ctx.lineTo(item.width * 0.42, 0);
+          ctx.moveTo(0, -item.height * 0.42);
+          ctx.lineTo(0, item.height * 0.42);
+          ctx.stroke();
+        }
+        if (damage > 0.08) {
+          ctx.strokeStyle = "rgba(235, 242, 247, 0.72)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-item.width * 0.25, -item.height * 0.38);
+          ctx.lineTo(-item.width * 0.03, -item.height * 0.08);
+          ctx.lineTo(-item.width * 0.16, item.height * 0.18);
+          ctx.moveTo(item.width * 0.18, -item.height * 0.32);
+          ctx.lineTo(item.width * 0.04, item.height * 0.06);
+          ctx.lineTo(item.width * 0.34, item.height * 0.26);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawDetails() {
+        details.forEach((item) => {
+          const active = item === selected;
+          ctx.save();
+          if (active) {
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(item.x, item.y + 4, objectRadius(item) + 8 + Math.sin(pulse * 5) * 2, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          if (!item.mounted && !item.dragging) {
+            ctx.fillStyle = "rgba(9,17,31,0.2)";
+            ctx.beginPath();
+            ctx.ellipse(item.x, item.y + 52, 45, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          if (item.type === "crane") drawCrane(item);
+          if (item.type === "scoop") drawScoop(item);
+          if (item.type === "drill") drawDrill(item);
+          ctx.restore();
+        });
+      }
+
+      function drawCrane(item) {
+        const hook = craneHook(item);
+        const boomTipY = -56;
+        const cableTopY = boomTipY + 3 + Math.abs(item.hookOffset - 28) * 0.08;
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#192434";
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(-16, 34);
+        ctx.lineTo(-5, -44);
+        ctx.lineTo(46, boomTipY);
+        ctx.stroke();
+
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-16, 34);
+        ctx.lineTo(-5, -44);
+        ctx.lineTo(52, boomTipY);
+        ctx.moveTo(-2, -38);
+        ctx.lineTo(36, boomTipY + 6);
+        ctx.stroke();
+
+        ctx.fillStyle = item.accent;
+        ctx.beginPath();
+        ctx.moveTo(52, boomTipY);
+        ctx.lineTo(66, boomTipY + 3);
+        ctx.lineTo(51, boomTipY + 12);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "#172230";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(item.hookOffset, cableTopY);
+        ctx.lineTo(item.hookOffset, hook.y - item.y - 9);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#172230";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(item.hookOffset - 5, hook.y - item.y - 6);
+        ctx.quadraticCurveTo(item.hookOffset + 8, hook.y - item.y + 14, item.hookOffset + 18, hook.y - item.y - 1);
+        ctx.stroke();
+
+        fillRounded(-30, 30, 58, 22, 6, item.color);
+        ctx.fillStyle = "#172230";
+        ctx.fillRect(-24, 47, 48, 7);
+        ctx.restore();
+      }
+
+      function drawScoop(item) {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        const scoopY = item.action ? 10 + Math.sin(pulse * 8) * 4 : 20;
+        fillRounded(-27, 20, 52, 24, 6, item.color);
+        ctx.fillStyle = "#172230";
+        ctx.fillRect(-24, 42, 50, 8);
+        ctx.strokeStyle = "#172230";
+        ctx.lineWidth = 7;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(12, 24);
+        ctx.lineTo(31, scoopY);
+        ctx.stroke();
+
+        ctx.fillStyle = "#2e3a49";
+        ctx.beginPath();
+        ctx.moveTo(22, scoopY - 2);
+        ctx.lineTo(56, scoopY + 8);
+        ctx.lineTo(42, scoopY + 29);
+        ctx.lineTo(18, scoopY + 17);
+        ctx.closePath();
+        ctx.fill();
+
+        if (item.load) {
+          ctx.fillStyle = item.load.color;
+          ctx.beginPath();
+          ctx.moveTo(28, scoopY + 7);
+          ctx.quadraticCurveTo(42, scoopY - 4, 53, scoopY + 10);
+          ctx.lineTo(42, scoopY + 21);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.fillRect(-14, 25, 22, 5);
+        ctx.restore();
+      }
+
+      function drawDrill(item) {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        fillRounded(-23, 13, 46, 28, 6, item.color);
+        ctx.fillStyle = "#172230";
+        ctx.fillRect(-14, 39, 28, 9);
+
+        ctx.strokeStyle = "#172230";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(-18, 20);
+        ctx.lineTo(-34, 47);
+        ctx.moveTo(18, 20);
+        ctx.lineTo(34, 47);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(0, 42);
+        ctx.rotate(item.drillPhase);
+        ctx.strokeStyle = item.bit;
+        ctx.lineWidth = item.action ? 6 : 4;
+        ctx.beginPath();
+        ctx.moveTo(0, -3);
+        for (let i = 0; i < 5; i += 1) {
+          const y = i * 8;
+          ctx.lineTo(i % 2 === 0 ? -8 : 8, y);
+        }
+        ctx.stroke();
+        if (item.action) {
+          ctx.rotate(Math.PI * 0.5);
+          ctx.strokeStyle = "rgba(255,255,255,0.62)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, -4);
+          for (let i = 0; i < 5; i += 1) {
+            const y = i * 8;
+            ctx.lineTo(i % 2 === 0 ? -10 : 10, y);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        if (item.action) {
+          ctx.strokeStyle = item.bit;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-30, 58);
+          ctx.lineTo(-43, 69);
+          ctx.moveTo(28, 56);
+          ctx.lineTo(43, 66);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.fillRect(-11, 19, 22, 5);
+        ctx.restore();
+      }
+
+      function drawParticles() {
+        particles.forEach((particle) => {
+          ctx.globalAlpha = clamp(particle.life / particle.maxLife, 0, 1);
+          ctx.fillStyle = particle.color;
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        });
+      }
+
+      function draw() {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, cssWidth, cssHeight);
+        ctx.fillStyle = "#08111f";
+        ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+        ctx.save();
+        ctx.translate(fitX, fitY);
+        ctx.scale(fitScale, fitScale);
+        ctx.beginPath();
+        ctx.rect(0, 0, VIEW.width, VIEW.height);
+        ctx.clip();
+        ctx.translate(-camera.x, -camera.y);
+
+        drawBackground();
+        cargo.forEach((item) => {
+          if (!item.carriedBy) drawCargoItem(item);
+        });
+        drawTrain();
+        drawDetails();
+        cargo.forEach((item) => {
+          if (item.carriedBy) drawCargoItem(item);
+        });
+        drawParticles();
+        drawTargetPreview();
+        drawHomePreview();
+        ctx.restore();
+      }
+
+      function drawTargetPreview() {
+        if (!selected || !selected.target) return;
+        const info = targetInfo(selected.target);
+        if (!info) return;
+        ctx.save();
+        ctx.strokeStyle = selected.type === "drill" ? "rgba(255, 233, 120, 0.95)" : "rgba(255, 255, 255, 0.86)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([7, 6]);
+        ctx.beginPath();
+        ctx.ellipse(info.x, info.y, info.radius + 12, Math.max(20, info.radius * 0.62), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawHomePreview() {
+        if (!selected || selected.mounted) return;
+        const home = bayWorld(selected.bay);
+        ctx.save();
+        ctx.strokeStyle = "rgba(255, 244, 166, 0.92)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.arc(home.x, home.y + 38, 34 + Math.sin(pulse * 5) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function loop(now) {
+        const dt = clamp((now - lastTime) / 1000, 0, 0.05);
+        lastTime = now;
+        update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      makeDetails();
+      makeCargo();
+      resize();
+      updateMountedDetails();
+
+      window.addEventListener("resize", resize);
+      canvas.addEventListener("pointerdown", pointerDown);
+      canvas.addEventListener("pointermove", pointerMove);
+      canvas.addEventListener("pointerup", pointerUp);
+      canvas.addEventListener("pointercancel", pointerUp);
+      window.addEventListener("keydown", keyDown);
+      window.addEventListener("keyup", keyUp);
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>

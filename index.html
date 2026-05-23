@@ -321,6 +321,63 @@
           3px 3px 0 #06101f;
       }
 
+      .submarine .cover {
+        background:
+          radial-gradient(circle at 75% 14%, rgba(154, 230, 255, 0.36), transparent 22%),
+          linear-gradient(180deg, #1d8aa3 0%, #0a5773 44%, #06243f 100%);
+      }
+
+      .submarine .title-strip {
+        background:
+          linear-gradient(90deg, #ffca4f 0 8px, transparent 8px),
+          linear-gradient(90deg, rgba(116, 242, 206, 0.12), transparent 42%),
+          #07172a;
+      }
+
+      .squid .cover {
+        background:
+          radial-gradient(circle at 18% 22%, rgba(255, 121, 95, 0.18), transparent 26%),
+          radial-gradient(circle at 75% 78%, rgba(116, 242, 206, 0.16), transparent 30%),
+          linear-gradient(160deg, #071525 0%, #0a344d 50%, #05111f 100%);
+      }
+
+      .squid .title-strip {
+        background:
+          linear-gradient(90deg, #ff7b6b 0 8px, transparent 8px),
+          linear-gradient(90deg, rgba(255, 209, 102, 0.11), transparent 40%),
+          #0b1826;
+      }
+
+      .dodge .cover {
+        background:
+          radial-gradient(circle at 50% 36%, rgba(255, 209, 102, 0.24), transparent 26%),
+          linear-gradient(180deg, #181b24 0 54%, #3b2830 54% 100%);
+      }
+
+      .dodge .title-strip {
+        background:
+          linear-gradient(90deg, #ff5a4f 0 8px, transparent 8px),
+          linear-gradient(90deg, rgba(116, 242, 206, 0.13), transparent 42%),
+          #17191f;
+      }
+
+      .trains .cover {
+        background:
+          linear-gradient(180deg, #8fcde9 0 45%, #6fa95b 45% 68%, #3c3634 68% 100%);
+      }
+
+      .trains .title-strip {
+        background:
+          linear-gradient(90deg, #ffcf4a 0 8px, transparent 8px),
+          linear-gradient(90deg, rgba(89, 200, 255, 0.13), transparent 42%),
+          #09111f;
+      }
+
+      .trains .game-title {
+        font-size: clamp(1.08rem, 2.1vw, 1.58rem);
+        line-height: 1;
+      }
+
       @media (max-width: 960px) {
         .game-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -662,6 +719,271 @@
             <span class="title-strip">
               <strong class="game-title">Dolphin Jump</strong>
               <span class="game-meta">Pixel ocean <span class="seal">WG</span></span>
+            </span>
+          </span>
+        </a>
+
+        <a class="cartridge submarine" href="./submarine-dives/" aria-label="Play Submarine Dives">
+          <span class="notch" aria-hidden="true"></span>
+          <span class="screw left" aria-hidden="true"></span>
+          <span class="screw right" aria-hidden="true"></span>
+
+          <span class="label">
+            <span class="cover" aria-hidden="true">
+              <svg viewBox="0 0 360 245" role="img">
+                <rect width="360" height="245" fill="transparent"/>
+                <g fill="none" stroke="#b9f3ff" stroke-width="2" opacity=".24">
+                  <path d="M-16 54c27-10 51-10 74 0s48 10 75 0 51-10 76 0 50 10 75 0 53-10 91 0"/>
+                  <path d="M-20 182c32-12 59-12 88 0s54 12 84 0 57-12 89 0 57 12 128 0"/>
+                </g>
+                <g fill="#d5f9ff" opacity=".68">
+                  <circle cx="71" cy="63" r="4"/>
+                  <circle cx="90" cy="42" r="2.5"/>
+                  <circle cx="268" cy="72" r="5"/>
+                  <circle cx="292" cy="48" r="3"/>
+                  <circle cx="311" cy="29" r="2"/>
+                  <circle cx="151" cy="191" r="3"/>
+                </g>
+                <g transform="translate(68 89)">
+                  <path d="M31 54c9-26 48-44 97-44h35c44 0 80 17 91 41-12 23-49 38-95 38h-29c-49 0-88-14-99-35z" fill="#ffca4f"/>
+                  <path d="M62 32c19-22 62-31 111-20 18 4 36 12 47 21-39-8-92-4-158-1z" fill="#ffe58a"/>
+                  <path d="M15 55 0 33c20 1 38 10 53 25C36 73 18 82 0 82l15-27z" fill="#d58b2b"/>
+                  <circle cx="224" cy="49" r="18" fill="#0b314f"/>
+                  <circle cx="224" cy="49" r="10" fill="#78dcff"/>
+                  <circle cx="166" cy="49" r="12" fill="#0b314f"/>
+                  <circle cx="166" cy="49" r="7" fill="#78dcff"/>
+                  <circle cx="113" cy="49" r="12" fill="#0b314f"/>
+                  <circle cx="113" cy="49" r="7" fill="#78dcff"/>
+                  <rect x="107" y="1" width="58" height="14" rx="6" fill="#d58b2b"/>
+                  <rect x="123" y="-14" width="20" height="17" rx="5" fill="#ffe58a"/>
+                  <path d="M220 77v25c0 11 8 18 20 18h18" fill="none" stroke="#e0a33d" stroke-width="7" stroke-linecap="round"/>
+                  <path d="M255 118l18-12M257 119l18 10" fill="none" stroke="#e0a33d" stroke-width="6" stroke-linecap="round"/>
+                </g>
+                <g fill="#f7c35d">
+                  <path d="M35 135c18-16 46-15 63 3-18 17-46 16-63-3z"/>
+                  <path d="M44 135 29 123c-2 8-2 17 0 25l15-13z"/>
+                </g>
+                <circle cx="83" cy="131" r="3" fill="#071326"/>
+                <g transform="translate(245 171)" fill="#7cffb2">
+                  <rect x="0" y="24" width="8" height="25"/>
+                  <rect x="15" y="10" width="8" height="39"/>
+                  <rect x="31" y="0" width="8" height="49"/>
+                  <rect x="-11" y="36" width="24" height="7"/>
+                  <rect x="23" y="20" width="23" height="7"/>
+                </g>
+                <g transform="translate(0 213)">
+                  <path d="M0 15c36-10 66-13 92-9 35 6 70 4 106-5 47-11 99-7 162 13v31H0z" fill="#584233"/>
+                  <path d="M24 3h55M117 11h47M208 0h92" stroke="#7b6045" stroke-width="8" stroke-linecap="round"/>
+                </g>
+              </svg>
+            </span>
+            <span class="title-strip">
+              <strong class="game-title">Submarine Dives</strong>
+              <span class="game-meta">Deep sea <span class="seal">WG</span></span>
+            </span>
+          </span>
+        </a>
+
+        <a class="cartridge squid" href="./giant-squid-escape/" aria-label="Play Giant Squid Escape">
+          <span class="notch" aria-hidden="true"></span>
+          <span class="screw left" aria-hidden="true"></span>
+          <span class="screw right" aria-hidden="true"></span>
+
+          <span class="label">
+            <span class="cover" aria-hidden="true">
+              <svg viewBox="0 0 360 245" role="img">
+                <rect width="360" height="245" fill="transparent"/>
+                <g fill="#d5f9ff" opacity=".52">
+                  <circle cx="39" cy="192" r="4"/>
+                  <circle cx="61" cy="171" r="2.5"/>
+                  <circle cx="306" cy="44" r="4"/>
+                  <circle cx="282" cy="63" r="2.5"/>
+                  <circle cx="99" cy="41" r="3"/>
+                </g>
+                <g fill="none" stroke="#8cd7ff" stroke-width="2" opacity=".22">
+                  <path d="M-15 78c31-11 58-11 86 0s54 11 85 0 58-11 86 0 56 11 126 0"/>
+                  <path d="M-19 211c35-12 64-12 95 0s58 12 91 0 62-12 95 0 60 12 112 0"/>
+                </g>
+                <g transform="translate(134 32)">
+                  <path d="M69 8c39 4 72 35 75 78 3 48-27 81-76 84-48 4-84-23-88-70C-24 52 14 10 69 8z" fill="#d45f82"/>
+                  <path d="M18 41c14-22 42-31 72-21 24 8 38 27 41 54-28-19-70-23-113-33z" fill="#ff9db3" opacity=".54"/>
+                  <circle cx="45" cy="91" r="13" fill="#06101f"/>
+                  <circle cx="96" cy="91" r="13" fill="#06101f"/>
+                  <circle cx="50" cy="87" r="3.5" fill="#fff"/>
+                  <circle cx="101" cy="87" r="3.5" fill="#fff"/>
+                  <path d="M46 122c17 10 35 10 52 0" fill="none" stroke="#74283f" stroke-width="5" stroke-linecap="round"/>
+                  <g fill="none" stroke="#d45f82" stroke-width="10" stroke-linecap="round">
+                    <path d="M26 145c-34 21-46 42-33 64"/>
+                    <path d="M46 153c-13 30-6 52 20 68"/>
+                    <path d="M72 155c8 33-1 57-28 73"/>
+                    <path d="M94 150c32 20 47 43 43 70"/>
+                    <path d="M113 139c39 7 64 25 75 54"/>
+                  </g>
+                  <g fill="#ff9db3">
+                    <circle cx="-10" cy="207" r="6"/>
+                    <circle cx="68" cy="220" r="6"/>
+                    <circle cx="42" cy="228" r="6"/>
+                    <circle cx="137" cy="218" r="6"/>
+                    <circle cx="188" cy="193" r="6"/>
+                  </g>
+                </g>
+                <g transform="translate(43 146)">
+                  <path d="M0 36c18-31 71-36 101-3-22 34-74 37-101 3z" fill="#74f2ce"/>
+                  <path d="M18 36 1 20c-4 11-4 23 0 34l17-18z" fill="#46bf9e"/>
+                  <circle cx="80" cy="29" r="5" fill="#06101f"/>
+                  <path d="M93 41h35" stroke="#fff4ad" stroke-width="4" stroke-linecap="round"/>
+                </g>
+                <g transform="translate(224 181)">
+                  <rect x="0" y="23" width="8" height="34" fill="#ff6767"/>
+                  <rect x="13" y="12" width="8" height="45" fill="#ff9a88"/>
+                  <rect x="27" y="4" width="8" height="53" fill="#ff6767"/>
+                  <rect x="-8" y="39" width="22" height="6" fill="#7cffb2"/>
+                  <rect x="20" y="21" width="25" height="6" fill="#ffd15b"/>
+                </g>
+              </svg>
+            </span>
+            <span class="title-strip">
+              <strong class="game-title">Giant Squid Escape</strong>
+              <span class="game-meta">Reef hunt <span class="seal">WG</span></span>
+            </span>
+          </span>
+        </a>
+
+        <a class="cartridge dodge" href="./punch-dodge-jump/" aria-label="Play Dodge and Duck!">
+          <span class="notch" aria-hidden="true"></span>
+          <span class="screw left" aria-hidden="true"></span>
+          <span class="screw right" aria-hidden="true"></span>
+
+          <span class="label">
+            <span class="cover" aria-hidden="true">
+              <svg viewBox="0 0 360 245" role="img">
+                <rect width="360" height="245" fill="transparent"/>
+                <g fill="#fff4ad" opacity=".86">
+                  <path d="M64 30h38v8H64zM78 20h50v8H78z"/>
+                  <path d="M247 34h48v8h-48zM267 24h38v8h-38z"/>
+                </g>
+                <g fill="none" stroke="#ffd166" stroke-width="4" opacity=".28">
+                  <path d="M34 51 122 128M326 55 238 132"/>
+                  <path d="M68 188h224"/>
+                </g>
+                <g transform="translate(56 76)">
+                  <rect x="0" y="27" width="66" height="52" rx="20" fill="#ff5a4f"/>
+                  <rect x="47" y="43" width="32" height="19" rx="8" fill="#bd3232"/>
+                  <path d="M21 24c13-19 43-19 56 0" fill="none" stroke="#ff9b8b" stroke-width="12" stroke-linecap="round"/>
+                  <path d="M65 54h54" stroke="#74f2ce" stroke-width="10" stroke-linecap="round"/>
+                </g>
+                <g transform="translate(235 67)">
+                  <rect x="8" y="30" width="68" height="54" rx="21" fill="#59c8ff"/>
+                  <rect x="0" y="47" width="32" height="20" rx="8" fill="#267ca4"/>
+                  <path d="M20 27c14-21 45-21 59 0" fill="none" stroke="#a6e7ff" stroke-width="12" stroke-linecap="round"/>
+                  <path d="M-49 60H1" stroke="#ffd166" stroke-width="10" stroke-linecap="round"/>
+                </g>
+                <g transform="translate(150 93)">
+                  <circle cx="39" cy="25" r="19" fill="#ffd2a6"/>
+                  <path d="M22 25c7-24 34-31 54-14 0 13-7 20-20 22-14-14-25-17-34-8z" fill="#2b1d1f"/>
+                  <path d="M32 25h7M54 25h7" stroke="#17191f" stroke-width="4" stroke-linecap="round"/>
+                  <path d="M40 41c7 3 14 3 20 0" fill="none" stroke="#9c3a3a" stroke-width="3" stroke-linecap="round"/>
+                  <rect x="19" y="49" width="43" height="53" rx="16" fill="#9cff6d"/>
+                  <rect x="24" y="66" width="33" height="40" fill="#17191f"/>
+                  <path d="M20 58C3 70-2 89 7 111M61 58c21 12 29 31 22 52" fill="none" stroke="#ffd2a6" stroke-width="10" stroke-linecap="round"/>
+                  <rect x="3" y="106" width="22" height="16" rx="7" fill="#ff5a4f"/>
+                  <rect x="68" y="104" width="23" height="16" rx="7" fill="#59c8ff"/>
+                  <path d="M29 102 20 140M53 102l11 38" stroke="#ffd2a6" stroke-width="10" stroke-linecap="round"/>
+                  <rect x="9" y="136" width="29" height="12" rx="5" fill="#f7f3e8"/>
+                  <rect x="54" y="136" width="29" height="12" rx="5" fill="#f7f3e8"/>
+                </g>
+                <g transform="translate(0 181)">
+                  <rect width="360" height="64" fill="#6d3f46"/>
+                  <path d="M0 0h360v16H0z" fill="#4d3038"/>
+                  <path d="M35 21h290M60 45h240" stroke="#ffb84f" stroke-width="5" opacity=".54"/>
+                </g>
+              </svg>
+            </span>
+            <span class="title-strip">
+              <strong class="game-title">Dodge and Duck!</strong>
+              <span class="game-meta">Reflex ring <span class="seal">WG</span></span>
+            </span>
+          </span>
+        </a>
+
+        <a class="cartridge trains" href="./trains-with-unusual-details/" aria-label="Play Trains with Unusual Details!">
+          <span class="notch" aria-hidden="true"></span>
+          <span class="screw left" aria-hidden="true"></span>
+          <span class="screw right" aria-hidden="true"></span>
+
+          <span class="label">
+            <span class="cover" aria-hidden="true">
+              <svg viewBox="0 0 360 245" role="img" shape-rendering="crispEdges">
+                <rect width="360" height="245" fill="transparent"/>
+                <g fill="#f6fbff" opacity=".82">
+                  <rect x="35" y="28" width="62" height="12"/>
+                  <rect x="53" y="18" width="49" height="12"/>
+                  <rect x="250" y="36" width="59" height="11"/>
+                  <rect x="277" y="25" width="43" height="11"/>
+                </g>
+                <circle cx="303" cy="28" r="15" fill="#ffcf4a"/>
+                <g fill="#5d8b4b">
+                  <path d="M0 108h360v42H0z"/>
+                  <path d="M0 101c40-19 76-22 108-9 42 17 80 18 122 2 45-16 88-14 130 7v24H0z"/>
+                </g>
+                <g transform="translate(0 157)">
+                  <rect y="0" width="360" height="88" fill="#433a35"/>
+                  <rect y="10" width="360" height="8" fill="#6f6259"/>
+                  <rect y="56" width="360" height="8" fill="#6f6259"/>
+                  <g fill="#211c1b">
+                    <rect x="14" y="4" width="10" height="67"/>
+                    <rect x="54" y="4" width="10" height="67"/>
+                    <rect x="94" y="4" width="10" height="67"/>
+                    <rect x="134" y="4" width="10" height="67"/>
+                    <rect x="174" y="4" width="10" height="67"/>
+                    <rect x="214" y="4" width="10" height="67"/>
+                    <rect x="254" y="4" width="10" height="67"/>
+                    <rect x="294" y="4" width="10" height="67"/>
+                    <rect x="334" y="4" width="10" height="67"/>
+                  </g>
+                </g>
+                <g transform="translate(31 108)">
+                  <rect x="42" y="25" width="82" height="44" fill="#d84f3f"/>
+                  <rect x="54" y="10" width="45" height="22" fill="#ffcf4a"/>
+                  <rect x="65" y="17" width="21" height="12" fill="#08111f"/>
+                  <rect x="124" y="36" width="70" height="33" fill="#3f8bcf"/>
+                  <rect x="194" y="29" width="72" height="40" fill="#74f2ce"/>
+                  <rect x="266" y="39" width="38" height="30" fill="#ffd166"/>
+                  <rect x="0" y="52" width="319" height="12" fill="#1d2028"/>
+                  <rect x="50" y="61" width="21" height="21" fill="#12151b"/>
+                  <rect x="95" y="61" width="21" height="21" fill="#12151b"/>
+                  <rect x="142" y="61" width="21" height="21" fill="#12151b"/>
+                  <rect x="213" y="61" width="21" height="21" fill="#12151b"/>
+                  <rect x="276" y="61" width="21" height="21" fill="#12151b"/>
+                  <rect x="55" y="66" width="11" height="11" fill="#8b919f"/>
+                  <rect x="100" y="66" width="11" height="11" fill="#8b919f"/>
+                  <rect x="147" y="66" width="11" height="11" fill="#8b919f"/>
+                  <rect x="218" y="66" width="11" height="11" fill="#8b919f"/>
+                  <rect x="281" y="66" width="11" height="11" fill="#8b919f"/>
+                  <rect x="28" y="41" width="18" height="28" fill="#1d2028"/>
+                  <rect x="14" y="29" width="24" height="15" fill="#1d2028"/>
+                  <rect x="244" y="10" width="10" height="21" fill="#ad6a39"/>
+                  <rect x="239" y="2" width="20" height="10" fill="#9cff6d"/>
+                  <rect x="162" y="17" width="13" height="18" fill="#f7f3e8"/>
+                  <rect x="157" y="11" width="24" height="8" fill="#ff5a4f"/>
+                </g>
+                <g transform="translate(112 79)">
+                  <rect x="0" y="22" width="42" height="18" fill="#ff5a4f"/>
+                  <rect x="27" y="12" width="10" height="10" fill="#fff"/>
+                  <rect x="37" y="17" width="26" height="6" fill="#fff"/>
+                  <rect x="62" y="18" width="8" height="16" fill="#ffd166"/>
+                  <path d="M0 31-28 17c-2 10-2 19 0 28L0 31z" fill="#ffd166"/>
+                </g>
+                <g fill="#fff" opacity=".65">
+                  <rect x="53" y="95" width="22" height="6"/>
+                  <rect x="76" y="89" width="16" height="6"/>
+                  <rect x="91" y="83" width="12" height="6"/>
+                </g>
+              </svg>
+            </span>
+            <span class="title-strip">
+              <strong class="game-title">Trains with Unusual Details!</strong>
+              <span class="game-meta">Rail yard <span class="seal">WG</span></span>
             </span>
           </span>
         </a>
